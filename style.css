@@ -1,0 +1,758 @@
+:root { 
+  --ink: #263044;
+  --muted: #6d7483;
+  --panel: rgba(255, 255, 255, 0.82);
+  --line: rgba(38, 48, 68, 0.16);
+  --accent: #f47b20;
+  --accent-dark: #bd5016;
+  --hud-bg: rgba(255, 255, 255, 0.62);
+  --hud-muted-bg: rgba(255, 255, 255, 0.42);
+  --secondary-bg: rgba(255, 255, 255, 0.58);
+  --menu-shade: rgba(246, 241, 223, 0.2);
+}
+
+body.dark-mode {
+  --ink: #edf3f7;
+  --muted: #aebbc6;
+  --panel: rgba(23, 31, 42, 0.9);
+  --line: rgba(225, 238, 247, 0.16);
+  --accent: #ff8b35;
+  --accent-dark: #db611d;
+  --hud-bg: rgba(24, 33, 44, 0.76);
+  --hud-muted-bg: rgba(24, 33, 44, 0.58);
+  --secondary-bg: rgba(43, 56, 70, 0.76);
+  --menu-shade: rgba(7, 13, 21, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #f6f1df;
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  touch-action: none;
+  user-select: none;
+}
+
+button {
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#gameShell {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.56), transparent 34%),
+    linear-gradient(180deg, #fbf3d8 0%, #eef2dc 48%, #dcefe6 100%);
+  transition: background 220ms ease;
+}
+
+body.dark-mode #gameShell {
+  background:
+    radial-gradient(circle at 50% 18%, rgba(75, 101, 120, 0.28), transparent 36%),
+    linear-gradient(180deg, #101923 0%, #15242d 50%, #172c31 100%);
+}
+
+#gameCanvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+}
+
+.hud {
+  position: absolute;
+  z-index: 3;
+  top: max(14px, env(safe-area-inset-top));
+  left: max(14px, env(safe-area-inset-left));
+  right: max(14px, env(safe-area-inset-right));
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 10px;
+  align-items: start;
+  pointer-events: none;
+}
+
+.hud.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hud.pauseActive {
+  z-index: 7;
+}
+
+.scoreBlock,
+.iconButton {
+  height: 46px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--hud-bg);
+  box-shadow: 0 10px 28px rgba(60, 68, 80, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.scoreBlock {
+  min-width: 75px;
+  padding: 7px 12px;
+}
+
+.scoreBlock span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
+
+.scoreBlock strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+.iconButton {
+  min-width: 72px;
+  padding: 0 12px;
+  color: var(--ink);
+  pointer-events: auto;
+}
+
+.hudActions {
+  justify-self: end;
+  display: flex;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.iconButton[aria-pressed="false"] {
+  color: var(--muted);
+  background: var(--hud-muted-bg);
+}
+
+.overlay {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.menuOverlay {
+  background: var(--menu-shade);
+}
+
+.panel {
+  width: min(400px, 92vw);
+  max-height: calc(100vh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  max-height: calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 28px;
+  text-align: center;
+  background: var(--panel);
+  box-shadow: 0 22px 70px rgba(39, 48, 65, 0.16);
+  backdrop-filter: blur(12px);
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel.compact {
+  padding: 24px;
+}
+
+.retryOverlay {
+  background: rgba(38, 48, 68, 0.08);
+}
+
+.pauseOverlay {
+  background: rgba(25, 32, 44, 0.22);
+  backdrop-filter: blur(5px);
+}
+
+.pausePanel {
+  width: min(330px, 88vw);
+}
+
+.pausePanel h2 {
+  margin-top: 8px;
+  font-size: 34px;
+}
+
+.pausePanel p {
+  font-size: 14px;
+}
+
+.retryPanel {
+  width: min(320px, 86vw);
+}
+
+.retryPanel h2 {
+  font-size: 30px;
+}
+
+.retryPanel p {
+  font-size: 15px;
+}
+
+.menuPanel {
+  width: min(380px, 92vw);
+}
+
+.menuPanel h1 {
+  margin-top: 8px;
+}
+
+.menuPanel h2 {
+  margin-top: 8px;
+}
+
+.customizePanel {
+  width: min(410px, 92vw);
+}
+
+.themePanel .themeList {
+  max-height: min(52vh, 390px);
+  margin-top: 18px;
+}
+
+.customizePanel h3 {
+  margin: 12px 0 0;
+  color: var(--ink);
+  font-size: 20px;
+}
+
+.customizeSectionTitle {
+  width: 100%;
+  text-align: left;
+}
+
+.customizeDivider {
+  width: 100%;
+  height: 1px;
+  margin: 16px 0 2px;
+  background: var(--line);
+}
+
+.customizeBallPreview {
+  display: grid;
+  min-height: 112px;
+  margin-top: 18px;
+  place-items: center;
+}
+
+.ballPreviewGraphic {
+  --ball-light: #ffb24a;
+  --ball-mid: #f28a27;
+  --ball-dark: #d96a1b;
+  --ball-seam: #2f2923;
+  --ball-outline: #b95a18;
+  position: relative;
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border: 2px solid var(--ball-outline);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 31% 25%, rgba(255, 255, 255, 0.34) 0 7%, transparent 17%),
+    radial-gradient(circle at 34% 27%, var(--ball-light), var(--ball-mid) 48%, var(--ball-dark) 100%);
+  box-shadow:
+    inset -4px -5px 8px rgba(0, 0, 0, 0.16),
+    inset 3px 3px 5px rgba(255, 255, 255, 0.13),
+    -7px 9px 12px rgba(70, 72, 76, 0.2);
+}
+
+.ballPreviewGraphic.large {
+  width: 94px;
+  height: 94px;
+  border-width: 3px;
+  box-shadow:
+    inset -8px -9px 14px rgba(0, 0, 0, 0.17),
+    inset 6px 6px 9px rgba(255, 255, 255, 0.13),
+    -12px 14px 18px rgba(70, 72, 76, 0.2);
+}
+
+.ballPreviewGraphic.hasAsset,
+.ballPreviewGraphic.hasAsset.large {
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.ballPreviewGraphic.hasAsset::after {
+  position: absolute;
+  z-index: 0;
+  right: 20%;
+  bottom: -8%;
+  width: 92%;
+  height: 22%;
+  border-radius: 50%;
+  background: rgba(93, 96, 101, 0.14);
+  content: "";
+  filter: blur(3px);
+  transform: rotate(-12deg);
+}
+
+.ballPreviewImage {
+  position: absolute;
+  z-index: 1;
+  top: -9.25%;
+  left: -9.25%;
+  display: block;
+  width: 118.5%;
+  height: 118.5%;
+}
+
+.ballPreviewGraphic .ballSeam {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ballSeam.horizontal {
+  top: calc(50% - 1px);
+  right: 0;
+  left: 0;
+  border-top: 2px solid var(--ball-seam);
+}
+
+.ballSeam.vertical {
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 1px);
+  border-left: 2px solid var(--ball-seam);
+}
+
+.ballSeam.leftArc,
+.ballSeam.rightArc {
+  top: 7.5%;
+  width: 46%;
+  height: 85%;
+  border-radius: 50%;
+}
+
+.ballSeam.leftArc {
+  left: 13%;
+  border-right: 2px solid var(--ball-seam);
+}
+
+.ballSeam.rightArc {
+  right: 13%;
+  border-left: 2px solid var(--ball-seam);
+}
+
+.ballPreviewGraphic.large .ballSeam.horizontal {
+  top: calc(50% - 1.5px);
+  border-top-width: 3px;
+}
+
+.ballPreviewGraphic.large .ballSeam.vertical {
+  left: calc(50% - 1.5px);
+  border-left-width: 3px;
+}
+
+.ballPreviewGraphic.large .ballSeam.leftArc {
+  border-right-width: 3px;
+}
+
+.ballPreviewGraphic.large .ballSeam.rightArc {
+  border-left-width: 3px;
+}
+
+.ballSkinList {
+  display: grid;
+  gap: 9px;
+  max-height: min(44vh, 380px);
+  margin-top: 18px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.themeList {
+  display: grid;
+  gap: 9px;
+  width: 100%;
+  max-height: min(28vh, 238px);
+  margin-top: 12px;
+  padding-right: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ballSkinOption {
+  display: grid;
+  grid-template-columns: 50px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 66px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  text-align: left;
+  background: var(--secondary-bg);
+}
+
+.ballSkinOption[aria-selected="true"] {
+  border-color: rgba(244, 123, 32, 0.72);
+  box-shadow: inset 0 0 0 2px rgba(244, 123, 32, 0.16);
+}
+
+.themeOption {
+  --theme-bg-top: #fff8ed;
+  --theme-bg-bottom: #f7efe1;
+  --theme-rim: #f0642b;
+  --theme-wall: rgba(38, 48, 68, 0.72);
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  text-align: left;
+  background: var(--secondary-bg);
+}
+
+.themeOption[aria-selected="true"] {
+  border-color: rgba(244, 123, 32, 0.72);
+  box-shadow: inset 0 0 0 2px rgba(244, 123, 32, 0.16);
+}
+
+.themeSwatch {
+  position: relative;
+  width: 54px;
+  height: 36px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: linear-gradient(180deg, var(--theme-bg-top), var(--theme-bg-bottom));
+  box-shadow: inset 0 -10px 18px rgba(0, 0, 0, 0.08);
+}
+
+.themeSwatch::before,
+.themeSwatch::after {
+  position: absolute;
+  content: "";
+}
+
+.themeSwatch::before {
+  right: 6px;
+  bottom: 7px;
+  left: 6px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--theme-rim);
+}
+
+.themeSwatch::after {
+  top: 0;
+  bottom: 0;
+  left: 8px;
+  width: 4px;
+  background: var(--theme-wall);
+  box-shadow: 34px 0 0 var(--theme-wall);
+  opacity: 0.68;
+}
+
+.ballSkinOption strong,
+.ballSkinOption small,
+.themeOption strong,
+.themeOption small {
+  display: block;
+}
+
+.ballSkinOption small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.ballSkinCheck {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.menuActions {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+h1,
+h2,
+p {
+  margin: 0;
+}
+
+h1 {
+  font-size: clamp(42px, 8vw, 56px);
+  line-height: 0.95;
+}
+
+h2 {
+  font-size: 38px;
+  line-height: 1;
+}
+
+p {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 17px;
+}
+
+.primaryButton {
+  width: 100%;
+  height: 52px;
+  margin-top: 22px;
+  border-radius: 8px;
+  color: white;
+  background: linear-gradient(180deg, #ff963e, var(--accent));
+  box-shadow: inset 0 -2px 0 rgba(125, 48, 6, 0.22), 0 12px 24px rgba(244, 123, 32, 0.24);
+  font-weight: 800;
+}
+
+.menuActions .primaryButton,
+.menuActions .secondaryButton {
+  margin-top: 0;
+}
+
+.secondaryButton {
+  width: 100%;
+  min-height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0 16px;
+  color: var(--ink);
+  background: var(--secondary-bg);
+  box-shadow: 0 8px 22px rgba(39, 48, 65, 0.08);
+  font-weight: 750;
+}
+
+.secondaryButton:active {
+  transform: translateY(1px);
+}
+
+.overlaySecondaryButton {
+  margin-top: 10px;
+}
+
+.toggleButton[aria-pressed="true"] {
+  border-color: rgba(244, 123, 32, 0.5);
+  box-shadow: inset 0 0 0 1px rgba(244, 123, 32, 0.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #gameShell,
+  .overlay {
+    transition: none;
+  }
+}
+
+.primaryButton:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 420px) {
+  .overlay {
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+  }
+
+  .panel {
+    width: min(376px, 94vw);
+    max-height: calc(100vh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: 20px;
+  }
+
+  .panel.compact {
+    padding: 18px;
+  }
+
+  .menuPanel,
+  .customizePanel {
+    width: min(376px, 94vw);
+  }
+
+  .menuPanel h1 {
+    font-size: 40px;
+  }
+
+  .menuPanel h2,
+  h2 {
+    font-size: 32px;
+  }
+
+  .customizePanel h3 {
+    margin-top: 8px;
+    font-size: 18px;
+  }
+
+  p {
+    margin-top: 8px;
+    font-size: 15px;
+  }
+
+  .eyebrow {
+    font-size: 10px;
+  }
+
+  .menuActions {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .primaryButton {
+    height: 46px;
+  }
+
+  .secondaryButton {
+    min-height: 44px;
+    padding-inline: 12px;
+  }
+
+  .hud {
+    grid-template-columns: auto auto 1fr;
+    gap: 8px;
+  }
+
+  .scoreBlock {
+    min-width: 64px;
+    padding-inline: 10px;
+  }
+
+  .iconButton {
+    min-width: 64px;
+    padding-inline: 8px;
+  }
+
+  .hudActions {
+    gap: 6px;
+  }
+
+  .customizeBallPreview {
+    min-height: 78px;
+    margin-top: 10px;
+  }
+
+  .ballPreviewGraphic.large {
+    width: 68px;
+    height: 68px;
+  }
+
+  .ballSkinList {
+    gap: 8px;
+    max-height: min(34dvh, 220px);
+    margin-top: 12px;
+  }
+
+  .themePanel .themeList,
+  .themeList {
+    gap: 8px;
+    max-height: min(46dvh, 300px);
+    margin-top: 12px;
+  }
+
+  .ballSkinOption {
+    grid-template-columns: 44px 1fr auto;
+    gap: 10px;
+    min-height: 58px;
+    padding: 7px 10px;
+  }
+
+  .themeOption {
+    grid-template-columns: 50px 1fr auto;
+    gap: 10px;
+    min-height: 54px;
+    padding: 7px 10px;
+  }
+
+  .themeSwatch {
+    width: 48px;
+    height: 32px;
+  }
+}
+
+@media (max-height: 740px) {
+  .panel.compact {
+    padding: 18px;
+  }
+
+  .customizeBallPreview {
+    min-height: 72px;
+    margin-top: 8px;
+  }
+
+  .ballPreviewGraphic.large {
+    width: 64px;
+    height: 64px;
+  }
+
+  .ballSkinList {
+    max-height: min(30dvh, 200px);
+    margin-top: 10px;
+  }
+
+  .themePanel .themeList {
+    max-height: min(44dvh, 280px);
+  }
+
+  .menuActions {
+    margin-top: 12px;
+  }
+}

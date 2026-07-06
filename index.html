@@ -1,0 +1,124 @@
+<!doctype html> 
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta id="themeColor" name="theme-color" content="#f7f3e8">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script src="https://www.youtube.com/game_api/v1"></script>
+  <title>Hoop Flick</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=20260626">
+  <link rel="apple-touch-icon" href="favicon.svg?v=20260626">
+  <link rel="stylesheet" href="style.css?v=dev-20260626-3">
+</head>
+<body> 
+  <main id="gameShell" aria-label="Hoop Flick basketball arcade game">
+    <canvas id="gameCanvas" aria-label="Game canvas"></canvas>
+
+    <section id="mainMenuOverlay" class="overlay menuOverlay active" aria-live="polite">
+      <div class="panel menuPanel">
+        <span class="eyebrow" data-i18n="arcadeEyebrow">ARCADE BASKETBOL</span>
+        <h1>Hoop Flick</h1>
+        <p data-i18n="tagline">Çek, bırak ve yükselmeye devam et.</p>
+        <div class="menuActions">
+          <button id="startButton" class="primaryButton" type="button" data-i18n="play">Oyna</button>
+          <button id="customizeButton" class="secondaryButton" type="button" data-i18n="customize">Topu Özelleştir</button>
+          <button id="customizeThemeButton" class="secondaryButton" type="button" data-i18n="customizeTheme">Temayı Özelleştir</button>
+          <button id="settingsButton" class="secondaryButton" type="button" data-i18n="settings">Ayarlar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="settingsOverlay" class="overlay menuOverlay" aria-live="polite">
+      <div class="panel menuPanel compact">
+        <span class="eyebrow">HOOP FLICK</span>
+        <h2 data-i18n="settings">Ayarlar</h2>
+        <div class="menuActions">
+          <button id="settingsSoundButton" class="secondaryButton toggleButton" type="button" aria-pressed="true">Ses: Açık</button>
+          <button id="settingsDarkModeButton" class="secondaryButton toggleButton" type="button" aria-pressed="false">Karanlık Mod: Kapalı</button>
+          <button id="languageButton" class="secondaryButton toggleButton" type="button">Dil: Türkçe</button>
+          <button id="settingsBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="customizeOverlay" class="overlay menuOverlay" aria-live="polite">
+      <div class="panel menuPanel compact customizePanel">
+        <span class="eyebrow" data-i18n="collectionEyebrow">TOP KOLEKSİYONU</span>
+        <h2 data-i18n="chooseBall">Topunu Seç</h2>
+        <div id="customizeBallPreview" class="customizeBallPreview" aria-hidden="true"></div>
+        <h3 id="customizeBallName">Klasik Turuncu</h3>
+        <p data-i18n="ballCollectionHint">Yeni top stilleri için hazır koleksiyon.</p>
+        <div id="ballSkinList" class="ballSkinList" role="listbox" data-i18n-aria-label="chooseBall"></div>
+        <div class="menuActions">
+          <button id="customizeBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="themeOverlay" class="overlay menuOverlay" aria-live="polite">
+      <div class="panel menuPanel compact customizePanel themePanel">
+        <span class="eyebrow" data-i18n="backgroundTheme">Arka Plan Teması</span>
+        <h2 data-i18n="customizeTheme">Temayı Özelleştir</h2>
+        <div id="themeList" class="themeList" role="listbox" data-i18n-aria-label="backgroundTheme"></div>
+        <div class="menuActions">
+          <button id="themeBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="pauseOverlay" class="overlay pauseOverlay" aria-live="polite">
+      <div class="panel compact pausePanel">
+        <span class="eyebrow" data-i18n="pauseEyebrow">OYUN DURAKLATILDI</span>
+        <h2 data-i18n="paused">Duraklatıldı</h2>
+        <p data-i18n="pauseHint">Devam etmek için sağ üstteki Devam düğmesine bas.</p>
+        <div class="menuActions">
+          <button id="pauseMainMenuButton" class="primaryButton" type="button" data-i18n="returnMainMenu">Ana Menüye Dön</button>
+          <button id="pauseSettingsButton" class="secondaryButton" type="button" data-i18n="settings">Ayarlar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="gameOverOverlay" class="overlay" aria-live="polite">
+      <div class="panel compact">
+        <h2 data-i18n="gameOver">Oyun Bitti</h2>
+        <p id="finalScore">Skor 0</p>
+        <button id="restartButton" class="primaryButton" type="button" data-i18n="restart">Yeniden Başlat</button>
+        <button id="gameOverMenuButton" class="secondaryButton overlaySecondaryButton" type="button" data-i18n="mainMenu">Ana Menü</button>
+      </div>
+    </section>
+
+    <section id="retryOverlay" class="overlay retryOverlay" aria-live="assertive">
+      <div class="panel compact retryPanel">
+        <h2 data-i18n="ballStuck">Top Sıkıştı mı?</h2>
+        <p data-i18n="retryText">Son hoop'a dön ve oynamaya devam et.</p>
+        <button id="retryButton" class="primaryButton" type="button" data-i18n="retry">Tekrar Dene</button>
+        <button id="retryMenuButton" class="secondaryButton overlaySecondaryButton" type="button" data-i18n="mainMenu">Ana Menü</button>
+      </div>
+    </section>
+
+    <div id="hud" class="hud" aria-live="polite">
+      <div class="scoreBlock">
+        <span data-i18n="score">Skor</span>
+        <strong id="scoreValue">0</strong>
+      </div>
+      <div class="scoreBlock">
+        <span data-i18n="best">En İyi</span>
+        <strong id="bestValue">0</strong>
+      </div>
+      <div class="hudActions">
+        <button id="menuButton" class="iconButton" type="button" data-i18n="menu">Menü</button>
+        <button id="soundButton" class="iconButton" type="button" aria-label="Toggle sound" aria-pressed="true">Ses</button>
+      </div>
+    </div>
+  </main>
+  <script src="playablesBridge.js?v=dev-20260620-1"></script>
+  <script src="game.js?v=dev-20260626-4"></script>
+</body>
+</html>
+
+
+
+
