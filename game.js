@@ -1610,9 +1610,9 @@
       collideNet(hoop);
 
       if (!hasBoard(hoop)) continue;
-      const boardLocalX = getBoardLocalX(hoop) + 4;
-      const boardTop = hoopToWorld(hoop, boardLocalX, -62);
-      const boardBottom = hoopToWorld(hoop, boardLocalX, -62 + hoop.boardH);
+      const boardGeometry = getBoardLocalGeometry(hoop);
+      const boardTop = hoopToWorld(hoop, boardGeometry.x, boardGeometry.top);
+      const boardBottom = hoopToWorld(hoop, boardGeometry.x, boardGeometry.bottom);
       collideSegment(boardTop.x, boardTop.y, boardBottom.x, boardBottom.y, 0.64, "wall");
     }
   }
@@ -1972,6 +1972,15 @@
     const roomRight = WORLD_W - (hoop.x + hoop.w * 0.5);
     const roomLeft = hoop.x - hoop.w * 0.5;
     return roomRight >= roomLeft ? hoop.w * 0.5 + 18 : -hoop.w * 0.5 - 26;
+  }
+
+  function getBoardLocalGeometry(hoop) {
+    const top = -62;
+    return {
+      x: getBoardLocalX(hoop) + 4,
+      top,
+      bottom: top + hoop.boardH
+    };
   }
 
   function burst(x, y) {
@@ -2358,10 +2367,7 @@
     const left = -hoop.w * 0.5;
     const right = hoop.w * 0.5;
     const advanced = hasBoard(hoop);
-    const boardX = advanced ? getBoardLocalX(hoop) : 0;
-    const boardY = -62;
-    const boardOnRight = advanced && boardX > 0;
-    const boardEdge = boardOnRight ? boardX : boardX + 8;
+    const boardGeometry = advanced ? getBoardLocalGeometry(hoop) : null;
     const deformation = getHoopDeformation(hoop);
     const netSwing = deformation.netSwing;
     const netStretch = deformation.netStretch;
@@ -2378,23 +2384,15 @@
     ctx.fill();
 
     if (advanced) {
-      ctx.fillStyle = colors.boardShadow;
-      roundRect(boardX + 3, boardY + 4, 10, hoop.boardH, 4);
-      ctx.fill();
-
-      ctx.fillStyle = colors.boardFill;
-      ctx.strokeStyle = colors.boardStroke;
-      ctx.lineWidth = 3;
-      roundRect(boardX, boardY, 8, hoop.boardH, 4);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.strokeStyle = colors.boardStroke;
-      ctx.lineWidth = 4;
+      ctx.save();
+      ctx.strokeStyle = colors.rim;
+      ctx.lineWidth = 11;
+      ctx.lineCap = "round";
       ctx.beginPath();
-      ctx.moveTo(boardEdge, boardY + 18);
-      ctx.lineTo(boardOnRight ? right : left, rimY);
+      ctx.moveTo(boardGeometry.x, boardGeometry.top);
+      ctx.lineTo(boardGeometry.x, boardGeometry.bottom);
       ctx.stroke();
+      ctx.restore();
     }
 
     // Thin premium net: short, bright, and airy like the soft arcade references.
