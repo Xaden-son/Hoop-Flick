@@ -56,9 +56,9 @@
   // Lower LAUNCH_POWER_SCALE for a slower/shorter real shot; raise it for more reach.
   // TRAJECTORY_POWER_SCALE changes only the preview spacing (1 = same launch scale).
   // PULL_CURVE_EXPONENT changes how quickly power builds while dragging.
-  const LAUNCH_POWER_SCALE = 7.50;
+  const LAUNCH_POWER_SCALE = 7.58;
   const TRAJECTORY_POWER_SCALE = 1;
-  const PULL_CURVE_EXPONENT = 1.22;
+  const PULL_CURVE_EXPONENT = 1;
 
   const MAX_PULL = 132;
   const MIN_SHOT_PULL = 10;
@@ -81,6 +81,8 @@
   const HOOP_SPAWN_DURATION = 0.36;
   const HOOP_AIM_MAX_OFFSET = 9;
   const SHOT_RING_DURATION = 0.3;
+  const NEW_HIGH_SCORE_DURATION = 1.35;
+  const NEW_HIGH_SCORE_CONFETTI_COUNT = 22;
   const SPAWN_ATTEMPTS = 14;
   const MIN_HOOP_TILT = 2.5 * (Math.PI / 180);
   const MAX_HOOP_TILT = 7 * (Math.PI / 180);
@@ -849,9 +851,10 @@
       off: "Kapalı",
       swish: "Deliksiz",
       wall: "Duvar",
-      perfect: "Perfect",
-      bounce: "Bounce",
-      nice: "Güzel"
+      perfect: "Deliksiz",
+      bounce: "Duvardan",
+      nice: "Güzel",
+      newHighScore: "YENİ REKOR!"
     },
     en: {
       arcadeEyebrow: "ARCADE BASKETBALL",
@@ -916,7 +919,8 @@
       wall: "Wall",
       perfect: "Perfect",
       bounce: "Bounce",
-      nice: "Nice"
+      nice: "Nice",
+      newHighScore: "NEW HIGH SCORE!"
     }
   };
   const HOOP_ROLE = {
@@ -951,6 +955,7 @@
   let state = "menu";
   let score = 0;
   let best = readBestScore();
+  let runStartBestScore = best;
   let cameraY = 0;
   let targetCameraY = 0;
   let simulationTime = 0;
@@ -972,6 +977,13 @@
   let targetHoopId = 1;
   let airborneTime = 0;
   let hasReachedSecondHoop = false;
+  const highScoreCelebration = {
+    eligibleThisRun: best > 0,
+    hasCelebratedThisRun: false,
+    elapsed: 0,
+    active: false,
+    confetti: []
+  };
   let selectedBallSkinId = readBallSkinPreference();
   let selectedThemeId = readThemePreference();
   const ballEffects = {
@@ -1017,6 +1029,12 @@
     userPaused = false;
     settingsOrigin = "menu";
     score = 0;
+    runStartBestScore = best;
+    highScoreCelebration.eligibleThisRun = runStartBestScore > 0;
+    highScoreCelebration.hasCelebratedThisRun = false;
+    highScoreCelebration.elapsed = 0;
+    highScoreCelebration.active = false;
+    highScoreCelebration.confetti = [];
     cameraY = 0;
     targetCameraY = 0;
     simulationTime = 0;
@@ -1417,6 +1435,7 @@
       ring.y += ring.vy * dt;
     }
     shotRings = shotRings.filter((ring) => ring.life > 0);
+    updateHighScoreCelebration(dt);
     shake = Math.max(0, shake - dt * 26);
     comboText = Math.max(0, comboText - dt);
   }
@@ -1740,6 +1759,13 @@
     lastWasPerfect = wasPerfect;
     lastWasBounce = usedWall;
     score += lastScoreGain;
+    if (
+      highScoreCelebration.eligibleThisRun
+      && !highScoreCelebration.hasCelebratedThisRun
+      && score > runStartBestScore
+    ) {
+      triggerHighScoreCelebration();
+    }
     if (score > best) {
       best = score;
       writeBestScore(best, true);
@@ -1964,6 +1990,50 @@
     }
   }
 
+  function triggerHighScoreCelebration() {
+    const colors = ["#ffcf33", "#ff7a33", "#30d9c4", "#5aa7ff", "#f36ac3", "#ffffff"];
+    highScoreCelebration.hasCelebratedThisRun = true;
+    highScoreCelebration.elapsed = 0;
+    highScoreCelebration.active = true;
+    highScoreCelebration.confetti = [];
+
+    for (let i = 0; i < NEW_HIGH_SCORE_CONFETTI_COUNT; i += 1) {
+      const angle = random(-Math.PI * 0.88, -Math.PI * 0.12);
+      const speed = random(90, 190);
+      const life = random(0.78, 1.18);
+      highScoreCelebration.confetti.push({
+        x: WORLD_W * 0.5 + random(-68, 68),
+        y: 150 + random(-10, 12),
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        gravity: random(180, 260),
+        rotation: random(0, Math.PI * 2),
+        rotationSpeed: random(-8, 8),
+        width: random(4, 7),
+        height: random(7, 12),
+        life,
+        maxLife: life,
+        color: colors[i % colors.length]
+      });
+    }
+  }
+
+  function updateHighScoreCelebration(dt) {
+    if (!highScoreCelebration.active) return;
+    highScoreCelebration.elapsed += dt;
+    for (const piece of highScoreCelebration.confetti) {
+      piece.life -= dt;
+      piece.x += piece.vx * dt;
+      piece.y += piece.vy * dt;
+      piece.vy += piece.gravity * dt;
+      piece.rotation += piece.rotationSpeed * dt;
+    }
+    highScoreCelebration.confetti = highScoreCelebration.confetti.filter((piece) => piece.life > 0);
+    if (highScoreCelebration.elapsed >= NEW_HIGH_SCORE_DURATION && highScoreCelebration.confetti.length === 0) {
+      highScoreCelebration.active = false;
+    }
+  }
+
   function draw() {
     ctx.clearRect(0, 0, viewW, viewH);
     const sx = offsetX + (shake ? random(-shake, shake) : 0);
@@ -1990,6 +2060,7 @@
     if (comboText > 0) drawCombo();
 
     ctx.restore();
+    drawHighScoreCelebration();
   }
 
   function drawAmbient() {
@@ -2640,6 +2711,46 @@
     ctx.font = "850 " + (24 + streakEmphasis + pop * 4) + "px system-ui, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(scoreFeedbackText, 0, -comboText * 10);
+    ctx.restore();
+  }
+
+  function drawHighScoreCelebration() {
+    if (!highScoreCelebration.active) return;
+    const elapsed = highScoreCelebration.elapsed;
+    const remaining = Math.max(0, NEW_HIGH_SCORE_DURATION - elapsed);
+    const progress = 1 - clamp(remaining / NEW_HIGH_SCORE_DURATION, 0, 1);
+    const pop = Math.sin(clamp(progress * 1.8, 0, 1) * Math.PI);
+    const colors = getCanvasTheme();
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
+    ctx.scale(scale, scale);
+
+    for (const piece of highScoreCelebration.confetti) {
+      const lifeAlpha = clamp(piece.life / Math.min(0.3, piece.maxLife), 0, 1);
+      ctx.save();
+      ctx.translate(piece.x, piece.y);
+      ctx.rotate(piece.rotation);
+      ctx.globalAlpha = lifeAlpha;
+      ctx.fillStyle = piece.color;
+      ctx.fillRect(-piece.width * 0.5, -piece.height * 0.5, piece.width, piece.height);
+      ctx.restore();
+    }
+
+    if (elapsed < NEW_HIGH_SCORE_DURATION) {
+      ctx.save();
+      ctx.translate(WORLD_W * 0.5, 164);
+      ctx.globalAlpha = Math.min(1, remaining * 1.4);
+      ctx.fillStyle = colors.ink;
+      ctx.shadowColor = darkMode ? "rgba(0, 0, 0, 0.48)" : "rgba(255, 255, 255, 0.7)";
+      ctx.shadowBlur = 7;
+      ctx.font = "850 " + (24 + pop * 4) + "px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillText(t("newHighScore"), 0, -remaining * 8);
+      ctx.restore();
+    }
+
     ctx.restore();
   }
 
