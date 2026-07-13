@@ -56,7 +56,7 @@
   // Lower LAUNCH_POWER_SCALE for a slower/shorter real shot; raise it for more reach.
   // TRAJECTORY_POWER_SCALE changes only the preview spacing (1 = same launch scale).
   // PULL_CURVE_EXPONENT changes how quickly power builds while dragging.
-  const LAUNCH_POWER_SCALE = 7.58;
+  const LAUNCH_POWER_SCALE = 7.48;
   const TRAJECTORY_POWER_SCALE = 1;
   const PULL_CURVE_EXPONENT = 1;
 
@@ -72,7 +72,7 @@
   const MAX_HOOP_VERTICAL_GAP = 208;
   const AIRBORNE_RETRY_DELAY = 7.5;
   const RIM_RADIUS = 7;
-  const BALL_RADIUS = 13;
+  const BALL_RADIUS = 12.85;
   const NET_REST_Y = 30;
   const BALL_SETTLE_DURATION = 0.24;
   const BALL_SETTLE_INPUT_DELAY = 0.1;
@@ -224,7 +224,7 @@
       perfectStyle: "splash",
       perfectFlameColors: ["#ff3333", "#990000", "#4d0000"],
       perfectFlameIntensity: 1.0,
-      perfectFlameSize: 22,
+      perfectFlameSize: 20,
       perfectFlameLifetime: 0.36,
       perfectFlameShape: "splash",
       trailColors: ["#990000", "#ff3333", "#4d0000"],
@@ -1976,10 +1976,13 @@
 
   function getBoardLocalGeometry(hoop) {
     const top = -62;
+    const baseX = getBoardLocalX(hoop) + 4;
+    const inwardOffset = 10;
+    const bottomExtension = 20;
     return {
-      x: getBoardLocalX(hoop) + 4,
+      x: baseX - Math.sign(baseX) * inwardOffset,
       top,
-      bottom: top + hoop.boardH
+      bottom: top + hoop.boardH + bottomExtension
     };
   }
 
@@ -2386,7 +2389,7 @@
     if (advanced) {
       ctx.save();
       ctx.strokeStyle = colors.rim;
-      ctx.lineWidth = 11;
+      ctx.lineWidth = 9;
       ctx.lineCap = "round";
       ctx.beginPath();
       ctx.moveTo(boardGeometry.x, boardGeometry.top);
