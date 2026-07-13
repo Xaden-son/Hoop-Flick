@@ -1285,32 +1285,44 @@
     };
   }
 
+  function clearPointerDrag(pointerId) {
+    if (pointerId !== null && canvas.hasPointerCapture(pointerId)) {
+      canvas.releasePointerCapture(pointerId);
+    }
+    drag = null;
+    activePointer = null;
+  }
+
   function onPointerDown(event) {
-    if (!platformReady || platformPaused || state !== "playing" || activePointer !== null) return;
+    if (!platformReady || platformPaused || userPaused || state !== "playing" || activePointer !== null) return;
     const settleCanBeSkipped = ball.settle && ball.settle.elapsed >= BALL_SETTLE_INPUT_DELAY;
     if (!ball.held && !settleCanBeSkipped) return;
     const p = screenToWorld(event.clientX, event.clientY);
-    if (distance(p.x, p.y, ball.x, ball.y) > 64) return;
     if (settleCanBeSkipped) finishBallSettle();
     event.preventDefault();
     activePointer = event.pointerId;
     canvas.setPointerCapture(activePointer);
-    drag = { startX: ball.x, startY: ball.y, x: p.x, y: p.y };
+    drag = {
+      pointerStartX: p.x,
+      pointerStartY: p.y,
+      pointerCurrentX: p.x,
+      pointerCurrentY: p.y
+    };
   }
 
   function onPointerMove(event) {
     if (event.pointerId !== activePointer || !drag) return;
     event.preventDefault();
     const p = screenToWorld(event.clientX, event.clientY);
-    drag.x = p.x;
-    drag.y = p.y;
+    drag.pointerCurrentX = p.x;
+    drag.pointerCurrentY = p.y;
   }
 
   function onPointerUp(event) {
-    if (event.pointerId !== activePointer || !drag) return;
+    if (event.pointerId !== activePointer) return;
     event.preventDefault();
-    const pull = getPullVector();
-    if (pull.len > MIN_SHOT_PULL) {
+    const pull = drag ? getPullVector() : null;
+    if (pull && pull.len > MIN_SHOT_PULL) {
       const impulse = LAUNCH_POWER_SCALE * getShotPowerBoost(pull.ratio);
       ball.vx = pull.x * pull.power * impulse;
       ball.vy = pull.y * pull.power * impulse;
@@ -1326,14 +1338,19 @@
       emitShotRings(pull);
       playGameSound("shot");
     }
-    drag = null;
-    activePointer = null;
+    clearPointerDrag(event.pointerId);
+  }
+
+  function onPointerCancel(event) {
+    if (event.pointerId !== activePointer) return;
+    event.preventDefault();
+    clearPointerDrag(event.pointerId);
   }
 
   function getPullVector() {
     if (!drag) return { x: 0, y: 0, len: 0, ratio: 0, power: 0 };
-    const rawX = drag.startX - drag.x;
-    const rawY = drag.startY - drag.y;
+    const rawX = drag.pointerStartX - drag.pointerCurrentX;
+    const rawY = drag.pointerStartY - drag.pointerCurrentY;
     const len = Math.min(Math.hypot(rawX, rawY), MAX_PULL);
     const angle = Math.atan2(rawY, rawX);
     const ratio = len / MAX_PULL;
@@ -3444,16 +3461,12 @@
     return min + Math.random() * (max - min);
   }
 
-  function distance(ax, ay, bx, by) {
-    return Math.hypot(ax - bx, ay - by);
-  }
-
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("orientationchange", resize, { passive: true });
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
-  canvas.addEventListener("pointercancel", onPointerUp);
+  canvas.addEventListener("pointercancel", onPointerCancel);
 
   startButton.addEventListener("click", startGame);
   customizeButton.addEventListener("click", () => openMenuPanel("customize"));
