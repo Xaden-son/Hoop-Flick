@@ -87,6 +87,66 @@
   const MIN_HOOP_TILT = 2.5 * (Math.PI / 180);
   const MAX_HOOP_TILT = 7 * (Math.PI / 180);
 
+  // MANUAL GAMEPLAY VARIETY TUNING
+  // Keep disabled in production. When enabled, one summary is logged per spawned transition.
+  const DEBUG_GAMEPLAY_VARIETY = false;
+  const TUTORIAL_LAST_TARGET_ID = 4;
+  const VARIETY_CHANCE_FULL_SCORE = 50;
+  const MAX_HARD_TRANSITION_STREAK = 1;
+  const LONG_SHOT_COOLDOWN_TRANSITIONS = 1;
+  const WIDE_GAP_UNLOCK_SCORE = 8;
+  const WIDE_GAP_BASE_CHANCE = 0.22;
+  const WIDE_GAP_MAX_CHANCE = 0.38;
+  const LONG_SHOT_UNLOCK_SCORE = 8;
+  const LONG_SHOT_BASE_CHANCE = 0.08;
+  const LONG_SHOT_MAX_CHANCE = 0.22;
+  const LONG_SHOT_MIN_CENTER_DISTANCE = 248;
+  const FALLBACK_HORIZONTAL_GAP = 92;
+  const FALLBACK_VERTICAL_GAP = 166;
+  const CHALLENGED_MAX_VERTICAL_GAP = 190;
+  const REACHABILITY_PULL_RATIOS = [0.6, 0.72, 0.82, 0.92, 1];
+  const REACHABILITY_ELEVATION_DEGREES = [48, 56, 64, 72, 78, 84];
+  const REACHABILITY_STEP = 1 / 60;
+  const REACHABILITY_MAX_TIME = 1.65;
+
+  const CHALLENGE_COSTS = {
+    wide: 1,
+    longShot: 1,
+    moving: 1,
+    board: 1,
+    tilt: 1
+  };
+
+  const DIFFICULTY_TIERS = [
+    { name: "start", minScore: 0, maxScore: 7, maxBudget: 0, weights: { easy: 1, medium: 0, hard: 0 } },
+    { name: "light", minScore: 8, maxScore: 14, maxBudget: 1, weights: { easy: 0.6, medium: 0.4, hard: 0 } },
+    { name: "medium", minScore: 15, maxScore: 29, maxBudget: 2, weights: { easy: 0.4, medium: 0.5, hard: 0.1 } },
+    { name: "advanced", minScore: 30, maxScore: 49, maxBudget: 2, weights: { easy: 0.3, medium: 0.5, hard: 0.2 } },
+    { name: "mastery", minScore: 50, maxScore: Infinity, maxBudget: 3, weights: { easy: 0.25, medium: 0.45, hard: 0.3 } }
+  ];
+
+  const DIFFICULTY_BUDGET_CAPS = {
+    easy: 0,
+    medium: 1,
+    hard: 3
+  };
+
+  const SPAWN_GAP_PROFILES = {
+    tutorial: { minX: 98, maxX: 130, minY: 166, maxY: 188 },
+    normalNear: { minX: 78, maxX: 108, minY: 158, maxY: 176 },
+    normalFar: { minX: 118, maxX: 148, minY: 180, maxY: 204 },
+    wideHorizontal: { minX: 155, maxX: 166, minY: 158, maxY: 190 },
+    wideVertical: { minX: 88, maxX: 130, minY: 209, maxY: 226 },
+    wideBalanced: { minX: 132, maxX: 154, minY: 190, maxY: 214 },
+    longShot: { minX: 132, maxX: 172, minY: 210, maxY: 242 },
+    fallback: {
+      minX: MIN_HOOP_HORIZONTAL_GAP,
+      maxX: MAX_HOOP_HORIZONTAL_GAP,
+      minY: MIN_HOOP_VERTICAL_GAP,
+      maxY: MAX_HOOP_VERTICAL_GAP
+    }
+  };
+
   const BALL_EFFECT_PRESETS = {
     classic: {
       perfectStyle: "starBurst",
@@ -977,6 +1037,11 @@
   let targetHoopId = 1;
   let airborneTime = 0;
   let hasReachedSecondHoop = false;
+  const transitionHistory = {
+    lastDifficulty: "easy",
+    hardStreak: 0,
+    lastWasLongShot: false
+  };
   const highScoreCelebration = {
     eligibleThisRun: best > 0,
     hasCelebratedThisRun: false,
@@ -1048,6 +1113,9 @@
     lastWasBounce = false;
     lastHoopSide = 1;
     hasReachedSecondHoop = false;
+    transitionHistory.lastDifficulty = "easy";
+    transitionHistory.hardStreak = 0;
+    transitionHistory.lastWasLongShot = false;
     particles = [];
     shotRings = [];
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
@@ -1091,10 +1159,11 @@
     return makeHoop(x, y, 1, startHoop);
   }
 
-  function makeHoop(x, y, id, sourceHoop) {
+  function makeHoop(x, y, id, sourceHoop, transitionPlan) {
     const difficulty = clamp(score / 30, 0, 1);
-    const moving = score >= 9 && id % 4 === 0;
-    const board = score >= 7 && id % 3 === 0 && !moving;
+    const features = transitionPlan?.features || { moving: false, board: false, tilt: false };
+    const moving = Boolean(features.moving);
+    const board = Boolean(features.board) && !moving;
     return {
       id,
       x,
@@ -1111,7 +1180,7 @@
       movementType: moving && id % 8 === 0 ? "vertical" : "horizontal",
       moveAmplitude: moving ? random(22, 34) : 0,
       movePhase: Math.random() * Math.PI * 2,
-      rotation: getDirectionalHoopRotation(x, id, sourceHoop, difficulty, moving || board),
+      rotation: getDirectionalHoopRotation(x, id, sourceHoop, difficulty, moving || board, features.tilt),
       spawnProgress: 0,
       entranceTimer: 0,
       netAnimation: 0,
@@ -1122,8 +1191,8 @@
     };
   }
 
-  function getDirectionalHoopRotation(targetX, id, sourceHoop, difficulty, hasOtherChallenge) {
-    if (id < 2 || !sourceHoop || hasOtherChallenge || !shouldTiltHoop(id, difficulty)) return 0;
+  function getDirectionalHoopRotation(targetX, id, sourceHoop, difficulty, hasOtherChallenge, tiltEnabled) {
+    if (!tiltEnabled || id < 2 || !sourceHoop || hasOtherChallenge || !shouldTiltHoop(id, difficulty)) return 0;
     const deltaX = sourceHoop.x - targetX;
     if (Math.abs(deltaX) < 1) return 0;
     const distanceRatio = clamp(Math.abs(deltaX) / 150, 0, 1);
@@ -1215,57 +1284,301 @@
     return HOOP_WIDTH;
   }
 
-  function nextHoop() {
-    const last = hoops[hoops.length - 1];
-    const difficulty = clamp(score / 18, 0, 1);
-    const earlyHoop = last.id < 4;
-    let direction = last.x < WORLD_W * 0.5 ? 1 : -1;
-    lastHoopSide = direction;
+  function getDifficultyTier(scoreValue, targetId) {
+    if (targetId <= TUTORIAL_LAST_TARGET_ID) {
+      return {
+        ...DIFFICULTY_TIERS[0],
+        name: "tutorial",
+        tutorial: true
+      };
+    }
+    const tier = DIFFICULTY_TIERS.find((entry) => scoreValue >= entry.minScore && scoreValue <= entry.maxScore)
+      || DIFFICULTY_TIERS[DIFFICULTY_TIERS.length - 1];
+    return { ...tier, tutorial: false };
+  }
+
+  function chooseTransitionDifficulty(tier) {
+    if (tier.tutorial || tier.maxBudget === 0) return "easy";
+    const weights = { ...tier.weights };
+    if (
+      transitionHistory.lastDifficulty === "hard"
+      || transitionHistory.hardStreak >= MAX_HARD_TRANSITION_STREAK
+    ) {
+      weights.hard = 0;
+    }
+    const total = weights.easy + weights.medium + weights.hard;
+    if (total <= 0) return "easy";
+    const roll = Math.random() * total;
+    if (roll < weights.easy) return "easy";
+    if (roll < weights.easy + weights.medium) return "medium";
+    return "hard";
+  }
+
+  function getVarietyChance(baseChance, maxChance, unlockScore) {
+    const progress = clamp(
+      (score - unlockScore) / Math.max(1, VARIETY_CHANCE_FULL_SCORE - unlockScore),
+      0,
+      1
+    );
+    return baseChance + (maxChance - baseChance) * progress;
+  }
+
+  function getSpawnDirection(source) {
+    return source.x < WORLD_W * 0.5 ? 1 : -1;
+  }
+
+  function getAvailableHorizontalGap(source, direction) {
     const minX = WALL_INSET + HOOP_WALL_CLEARANCE;
     const maxX = WORLD_W - WALL_INSET - HOOP_WALL_CLEARANCE;
-    const spawnPhase = (last.id + 1) % 4;
-    const farSpawn = !earlyHoop && (spawnPhase === 1 || spawnPhase === 2);
+    return direction > 0 ? maxX - source.x : source.x - minX;
+  }
+
+  function chooseWideGeometry(availableHorizontalGap) {
+    const choices = [];
+    if (availableHorizontalGap >= SPAWN_GAP_PROFILES.wideHorizontal.minX) choices.push("wideHorizontal");
+    if (availableHorizontalGap >= SPAWN_GAP_PROFILES.wideVertical.minX) choices.push("wideVertical");
+    if (availableHorizontalGap >= SPAWN_GAP_PROFILES.wideBalanced.minX) choices.push("wideBalanced");
+    if (!choices.length) return null;
+    return choices[Math.floor(Math.random() * choices.length)];
+  }
+
+  function chooseTargetChallenge(targetId, geometryName, remainingBudget) {
+    const features = { moving: false, board: false, tilt: false };
+    if (remainingBudget < 1 || geometryName === "longShot") return features;
+
+    const difficulty = clamp(score / 30, 0, 1);
+    const movingEligible = score >= 9 && targetId % 4 === 0;
+    const boardEligible = score >= 7 && targetId % 3 === 0 && !movingEligible;
+    const tiltEligible = shouldTiltHoop(targetId, difficulty);
+
+    if (geometryName === "wideVertical" || geometryName === "wideBalanced") return features;
+    if (geometryName === "wideHorizontal") {
+      if (boardEligible) features.board = true;
+      else if (tiltEligible) features.tilt = true;
+      return features;
+    }
+
+    if (movingEligible) features.moving = true;
+    else if (boardEligible) features.board = true;
+    else if (tiltEligible) features.tilt = true;
+    return features;
+  }
+
+  function getTransitionBudgetCost(plan) {
+    return Number(plan.wide) * CHALLENGE_COSTS.wide
+      + Number(plan.longShot) * CHALLENGE_COSTS.longShot
+      + Number(plan.features.moving) * CHALLENGE_COSTS.moving
+      + Number(plan.features.board) * CHALLENGE_COSTS.board
+      + Number(plan.features.tilt) * CHALLENGE_COSTS.tilt;
+  }
+
+  function createTransitionPlan(source, targetId) {
+    const tier = getDifficultyTier(score, targetId);
+    const difficulty = chooseTransitionDifficulty(tier);
+    const budgetLimit = Math.min(tier.maxBudget, DIFFICULTY_BUDGET_CAPS[difficulty]);
+    const direction = getSpawnDirection(source);
+    const availableHorizontalGap = getAvailableHorizontalGap(source, direction);
+    let geometryName = tier.tutorial
+      ? "tutorial"
+      : difficulty === "easy" || availableHorizontalGap < SPAWN_GAP_PROFILES.normalFar.minX
+        ? "normalNear"
+        : "normalFar";
+    let longShot = false;
+    let wide = false;
+
+    if (!tier.tutorial && budgetLimit >= CHALLENGE_COSTS.longShot) {
+      const longShotAvailable = availableHorizontalGap >= SPAWN_GAP_PROFILES.longShot.minX;
+      const longShotOffCooldown = LONG_SHOT_COOLDOWN_TRANSITIONS <= 0 || !transitionHistory.lastWasLongShot;
+      if (
+        score >= LONG_SHOT_UNLOCK_SCORE
+        && longShotAvailable
+        && longShotOffCooldown
+        && Math.random() < getVarietyChance(LONG_SHOT_BASE_CHANCE, LONG_SHOT_MAX_CHANCE, LONG_SHOT_UNLOCK_SCORE)
+      ) {
+        geometryName = "longShot";
+        longShot = true;
+      }
+    }
+
+    if (!longShot && !tier.tutorial && budgetLimit >= CHALLENGE_COSTS.wide && score >= WIDE_GAP_UNLOCK_SCORE) {
+      if (Math.random() < getVarietyChance(WIDE_GAP_BASE_CHANCE, WIDE_GAP_MAX_CHANCE, WIDE_GAP_UNLOCK_SCORE)) {
+        const wideGeometry = chooseWideGeometry(availableHorizontalGap);
+        if (wideGeometry) {
+          geometryName = wideGeometry;
+          wide = true;
+        }
+      }
+    }
+
+    const geometryCost = Number(wide) * CHALLENGE_COSTS.wide + Number(longShot) * CHALLENGE_COSTS.longShot;
+    const features = chooseTargetChallenge(targetId, geometryName, budgetLimit - geometryCost);
+    const plan = {
+      tier: tier.name,
+      difficulty,
+      budgetLimit,
+      budget: 0,
+      geometryName,
+      profile: SPAWN_GAP_PROFILES[geometryName],
+      direction,
+      wide,
+      longShot,
+      fallback: false,
+      features
+    };
+    plan.budget = getTransitionBudgetCost(plan);
+    return plan;
+  }
+
+  function createFallbackTransitionPlan(source) {
+    return {
+      tier: getDifficultyTier(score, source.id + 1).name,
+      difficulty: "easy",
+      budgetLimit: 0,
+      budget: 0,
+      geometryName: "fallback",
+      profile: SPAWN_GAP_PROFILES.fallback,
+      direction: getSpawnDirection(source),
+      wide: false,
+      longShot: false,
+      fallback: true,
+      features: { moving: false, board: false, tilt: false }
+    };
+  }
+
+  function sampleHoopCandidate(source, targetId, plan) {
+    const minX = WALL_INSET + HOOP_WALL_CLEARANCE;
+    const maxX = WORLD_W - WALL_INSET - HOOP_WALL_CLEARANCE;
+    const xDrift = random(plan.profile.minX, plan.profile.maxX);
+    const yLift = random(plan.profile.minY, plan.profile.maxY);
+    const x = clamp(source.x + plan.direction * xDrift, minX, maxX);
+    return makeHoop(x, source.y - yLift, targetId, source, plan);
+  }
+
+  function isReachableTransition(source, target) {
+    const targetPositions = [{ x: target.baseX, y: target.baseY }];
+    if (target.moving && target.movementType === "horizontal") {
+      targetPositions.push(
+        { x: target.baseX - target.moveAmplitude, y: target.baseY },
+        { x: target.baseX + target.moveAmplitude, y: target.baseY }
+      );
+    } else if (target.moving && target.movementType === "vertical") {
+      targetPositions.push(
+        { x: target.baseX, y: target.baseY - target.moveAmplitude },
+        { x: target.baseX, y: target.baseY + target.moveAmplitude }
+      );
+    }
+    return targetPositions.every((position) => isReachableTargetPosition(source, target, position));
+  }
+
+  function isReachableTargetPosition(source, target, position) {
+    const start = hoopToWorld(source, 0, NET_REST_Y);
+    const targetAtPosition = { ...target, x: position.x, y: position.y };
+    const direction = position.x >= start.x ? 1 : -1;
+    const mouthY = 4;
+    const insideLimit = target.w * 0.35;
+
+    for (const pullRatio of REACHABILITY_PULL_RATIOS) {
+      const pullLength = MAX_PULL * pullRatio;
+      const speed = pullLength * LAUNCH_POWER_SCALE * getShotPowerBoost(pullRatio);
+      for (const elevationDegrees of REACHABILITY_ELEVATION_DEGREES) {
+        const elevation = elevationDegrees * (Math.PI / 180);
+        let x = start.x;
+        let y = start.y;
+        let vx = direction * Math.cos(elevation) * speed;
+        let vy = -Math.sin(elevation) * speed;
+
+        for (let elapsed = 0; elapsed < REACHABILITY_MAX_TIME; elapsed += REACHABILITY_STEP) {
+          const previousX = x;
+          const previousY = y;
+          vy += GRAVITY * REACHABILITY_STEP;
+          vx *= Math.pow(AIR_DRAG, REACHABILITY_STEP * 60);
+          vy *= Math.pow(AIR_DRAG, REACHABILITY_STEP * 60);
+          x += vx * REACHABILITY_STEP;
+          y += vy * REACHABILITY_STEP;
+
+          const previousLocal = worldToHoop(targetAtPosition, previousX, previousY);
+          const local = worldToHoop(targetAtPosition, x, y);
+          if (local.y <= previousLocal.y || previousLocal.y > mouthY || local.y < mouthY) continue;
+          const localDeltaY = local.y - previousLocal.y;
+          const ratio = localDeltaY < 0.001 ? 1 : clamp((mouthY - previousLocal.y) / localDeltaY, 0, 1);
+          const xAtMouth = previousLocal.x + (local.x - previousLocal.x) * ratio;
+          if (Math.abs(xAtMouth) < insideLimit) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function nextHoop() {
+    const last = hoops[hoops.length - 1];
+    const targetId = last.id + 1;
+    let transitionPlan = createTransitionPlan(last, targetId);
+    lastHoopSide = transitionPlan.direction;
     let hoop = null;
 
     for (let attempt = 0; attempt < SPAWN_ATTEMPTS; attempt += 1) {
-      const driftMin = earlyHoop ? 98 : farSpawn ? 118 : 78;
-      const driftMax = earlyHoop ? 130 : farSpawn ? 148 : 108;
-      const xDrift = random(driftMin, driftMax);
-      const x = clamp(last.x + direction * xDrift, minX, maxX);
-      const liftMin = earlyHoop ? 166 : farSpawn ? 180 : 158;
-      const liftMax = earlyHoop ? 188 : farSpawn ? 204 : 176;
-      const yLift = random(liftMin, liftMax + difficulty * 4);
-      const candidate = makeHoop(x, last.y - yLift, last.id + 1, last);
-      if (isFairSpawn(last, candidate)) {
+      const candidate = sampleHoopCandidate(last, targetId, transitionPlan);
+      if (isFairSpawn(last, candidate, transitionPlan)) {
         hoop = candidate;
         break;
       }
     }
 
     if (!hoop) {
-      const fallbackDrift = farSpawn ? 122 : 92;
-      const fallbackLift = farSpawn ? 186 : 166;
-      const fallbackX = clamp(last.x + direction * fallbackDrift, minX, maxX);
-      hoop = makeHoop(fallbackX, last.y - fallbackLift, last.id + 1, last);
-      hoop.moving = false;
-      hoop.board = false;
-      hoop.rotation = 0;
-      hoop.moveAmplitude = 0;
+      transitionPlan = createFallbackTransitionPlan(last);
+      const minX = WALL_INSET + HOOP_WALL_CLEARANCE;
+      const maxX = WORLD_W - WALL_INSET - HOOP_WALL_CLEARANCE;
+      const fallbackX = clamp(last.x + transitionPlan.direction * FALLBACK_HORIZONTAL_GAP, minX, maxX);
+      hoop = makeHoop(fallbackX, last.y - FALLBACK_VERTICAL_GAP, targetId, last, transitionPlan);
     }
+
+    commitTransitionHistory(transitionPlan);
+    debugGameplayTransition(transitionPlan, last, hoop);
     hoops.push(hoop);
     if (hoops.length > 5) hoops.shift();
     return hoop;
   }
 
-  function isFairSpawn(source, target) {
+  function commitTransitionHistory(plan) {
+    transitionHistory.lastDifficulty = plan.difficulty;
+    transitionHistory.hardStreak = plan.difficulty === "hard" ? transitionHistory.hardStreak + 1 : 0;
+    transitionHistory.lastWasLongShot = LONG_SHOT_COOLDOWN_TRANSITIONS > 0 && plan.longShot;
+  }
+
+  function debugGameplayTransition(plan, source, target) {
+    if (!DEBUG_GAMEPLAY_VARIETY) return;
+    console.debug("[Hoop Flick] Gameplay transition", {
+      tier: plan.tier,
+      difficulty: plan.difficulty,
+      horizontalGap: Number(Math.abs(target.x - source.x).toFixed(1)),
+      verticalGap: Number((source.y - target.y).toFixed(1)),
+      geometry: plan.geometryName,
+      longShot: plan.longShot,
+      challengeBudget: plan.budget,
+      fallback: plan.fallback
+    });
+  }
+
+  function isFairSpawn(source, target, plan) {
     const horizontalGap = Math.abs(target.x - source.x);
     const verticalGap = source.y - target.y;
-    if (horizontalGap < MIN_HOOP_HORIZONTAL_GAP || horizontalGap > MAX_HOOP_HORIZONTAL_GAP) return false;
-    if (verticalGap < MIN_HOOP_VERTICAL_GAP || verticalGap > MAX_HOOP_VERTICAL_GAP) return false;
+    if (horizontalGap < plan.profile.minX || horizontalGap > plan.profile.maxX) return false;
+    if (verticalGap < plan.profile.minY || verticalGap > plan.profile.maxY) return false;
 
-    const challengeCount = Number(target.moving) + Number(target.board) + Number(Math.abs(target.rotation) > 0.001);
-    if (challengeCount > 1) return false;
-    if (challengeCount && verticalGap > 190) return false;
+    const targetChallengeCost = Number(target.moving) * CHALLENGE_COSTS.moving
+      + Number(target.board) * CHALLENGE_COSTS.board
+      + Number(Math.abs(target.rotation) > 0.001) * CHALLENGE_COSTS.tilt;
+    const totalBudget = Number(plan.wide) * CHALLENGE_COSTS.wide
+      + Number(plan.longShot) * CHALLENGE_COSTS.longShot
+      + targetChallengeCost;
+    if (totalBudget > plan.budgetLimit || totalBudget !== plan.budget) return false;
+    if (plan.longShot && targetChallengeCost > 0) return false;
+    if (plan.longShot && Math.hypot(horizontalGap, verticalGap) < LONG_SHOT_MIN_CENTER_DISTANCE) return false;
+    if (plan.wide && targetChallengeCost > 1) return false;
+    if (targetChallengeCost && verticalGap > CHALLENGED_MAX_VERTICAL_GAP) return false;
+
+    if (target.moving && (target.board || Math.abs(target.rotation) > 0.001)) return false;
+    if (target.board && Math.abs(target.rotation) > 0.001) return false;
 
     if (target.moving && target.movementType === "horizontal") {
       if (target.baseX - target.moveAmplitude < WALL_INSET + HOOP_WALL_CLEARANCE) return false;
@@ -1274,7 +1587,8 @@
     if (target.moving && target.movementType === "vertical") {
       if (verticalGap - target.moveAmplitude < 142 || verticalGap + target.moveAmplitude > 210) return false;
     }
-    return true;
+    if (!plan.wide && !plan.longShot && !target.moving) return true;
+    return isReachableTransition(source, target);
   }
 
   function screenToWorld(clientX, clientY) {
