@@ -60,8 +60,8 @@
   const TRAJECTORY_POWER_SCALE = 1;
   const PULL_CURVE_EXPONENT = 1;
 
-  const MAX_PULL = 132;
-  const MIN_SHOT_PULL = 10;
+  const MAX_PULL = 140;
+  const MIN_SHOT_PULL = 12;
   const MAX_POWER_BOOST = 1.12;
 
   const WALL_INSET = 30;
@@ -72,7 +72,7 @@
   const MAX_HOOP_VERTICAL_GAP = 208;
   const AIRBORNE_RETRY_DELAY = 7.5;
   const RIM_RADIUS = 7;
-  const BALL_RADIUS = 12.85;
+  const BALL_RADIUS = 12.95;
   const NET_REST_Y = 30;
   const BALL_SETTLE_DURATION = 0.24;
   const BALL_SETTLE_INPUT_DELAY = 0.1;
@@ -101,6 +101,15 @@
   const LONG_SHOT_BASE_CHANCE = 0.08;
   const LONG_SHOT_MAX_CHANCE = 0.22;
   const LONG_SHOT_MIN_CENTER_DISTANCE = 248;
+  const NORMAL_NEAR_MAX_SHARE = 0.22;
+  const MAX_CONSECUTIVE_NEAR_TRANSITIONS = 1;
+  const NORMAL_NEAR_MIN_CENTER_DISTANCE = 190;
+  const EDGE_TRANSITION_UNLOCK_SCORE = 8;
+  const EDGE_TRANSITION_BASE_CHANCE = 0.12;
+  const EDGE_TRANSITION_MAX_CHANCE = 0.20;
+  const EDGE_TRANSITION_COOLDOWN = 1;
+  const EDGE_HOOP_WALL_GAP = 10;
+  const EDGE_HOOP_INWARD_JITTER = 4;
   const FALLBACK_HORIZONTAL_GAP = 92;
   const FALLBACK_VERTICAL_GAP = 166;
   const CHALLENGED_MAX_VERTICAL_GAP = 190;
@@ -111,6 +120,7 @@
 
   const CHALLENGE_COSTS = {
     wide: 1,
+    edge: 1,
     longShot: 1,
     moving: 1,
     board: 1,
@@ -133,12 +143,13 @@
 
   const SPAWN_GAP_PROFILES = {
     tutorial: { minX: 98, maxX: 130, minY: 166, maxY: 188 },
-    normalNear: { minX: 78, maxX: 108, minY: 158, maxY: 176 },
+    normalNear: { minX: 96, maxX: 122, minY: 166, maxY: 188 },
     normalFar: { minX: 118, maxX: 148, minY: 180, maxY: 204 },
     wideHorizontal: { minX: 155, maxX: 166, minY: 158, maxY: 190 },
     wideVertical: { minX: 88, maxX: 130, minY: 209, maxY: 226 },
     wideBalanced: { minX: 132, maxX: 154, minY: 190, maxY: 214 },
     longShot: { minX: 132, maxX: 172, minY: 210, maxY: 242 },
+    edge: { minX: 120, maxX: 260, minY: 170, maxY: 205 },
     fallback: {
       minX: MIN_HOOP_HORIZONTAL_GAP,
       maxX: MAX_HOOP_HORIZONTAL_GAP,
@@ -995,7 +1006,7 @@
   let scale = 1;
   let offsetX = 0;
   let offsetY = 0;
-  let lastTime = performance.now();
+  let lastTime = 0;
   let audioContext = null;
   const playablesBridge = window.PlayablesBridge || null;
   let isPlayablesEnv = Boolean(playablesBridge && playablesBridge.isInPlayablesEnv());
@@ -1005,6 +1016,7 @@
   let platformReady = false;
   let platformBootComplete = false;
   let animationFrameId = null;
+  let animationLoopGeneration = 0;
   let cloudSaveTimer = null;
   let scoreSubmitTimer = null;
   let pendingHighScore = null;
@@ -1040,7 +1052,9 @@
   const transitionHistory = {
     lastDifficulty: "easy",
     hardStreak: 0,
-    lastWasLongShot: false
+    lastWasLongShot: false,
+    lastWasNear: false,
+    lastWasEdge: false
   };
   const highScoreCelebration = {
     eligibleThisRun: best > 0,
@@ -1116,6 +1130,8 @@
     transitionHistory.lastDifficulty = "easy";
     transitionHistory.hardStreak = 0;
     transitionHistory.lastWasLongShot = false;
+    transitionHistory.lastWasNear = false;
+    transitionHistory.lastWasEdge = false;
     particles = [];
     shotRings = [];
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
@@ -1342,9 +1358,18 @@
     return choices[Math.floor(Math.random() * choices.length)];
   }
 
+  function chooseNormalGeometry() {
+    const nearOffCooldown = MAX_CONSECUTIVE_NEAR_TRANSITIONS > 0 && !transitionHistory.lastWasNear;
+    return nearOffCooldown && Math.random() < NORMAL_NEAR_MAX_SHARE ? "normalNear" : "normalFar";
+  }
+
   function chooseTargetChallenge(targetId, geometryName, remainingBudget) {
     const features = { moving: false, board: false, tilt: false };
-    if (remainingBudget < 1 || geometryName === "longShot") return features;
+    if (
+      remainingBudget < 1
+      || geometryName === "longShot"
+      || geometryName === "edge"
+    ) return features;
 
     const difficulty = clamp(score / 30, 0, 1);
     const movingEligible = score >= 9 && targetId % 4 === 0;
@@ -1366,6 +1391,7 @@
 
   function getTransitionBudgetCost(plan) {
     return Number(plan.wide) * CHALLENGE_COSTS.wide
+      + Number(plan.edge) * CHALLENGE_COSTS.edge
       + Number(plan.longShot) * CHALLENGE_COSTS.longShot
       + Number(plan.features.moving) * CHALLENGE_COSTS.moving
       + Number(plan.features.board) * CHALLENGE_COSTS.board
@@ -1378,15 +1404,24 @@
     const budgetLimit = Math.min(tier.maxBudget, DIFFICULTY_BUDGET_CAPS[difficulty]);
     const direction = getSpawnDirection(source);
     const availableHorizontalGap = getAvailableHorizontalGap(source, direction);
-    let geometryName = tier.tutorial
-      ? "tutorial"
-      : difficulty === "easy" || availableHorizontalGap < SPAWN_GAP_PROFILES.normalFar.minX
-        ? "normalNear"
-        : "normalFar";
+    let geometryName = tier.tutorial ? "tutorial" : chooseNormalGeometry();
     let longShot = false;
     let wide = false;
+    let edge = false;
 
-    if (!tier.tutorial && budgetLimit >= CHALLENGE_COSTS.longShot) {
+    if (
+      !tier.tutorial
+      && !hasBoard(source)
+      && score >= EDGE_TRANSITION_UNLOCK_SCORE
+      && budgetLimit >= CHALLENGE_COSTS.edge
+      && (EDGE_TRANSITION_COOLDOWN <= 0 || !transitionHistory.lastWasEdge)
+      && Math.random() < getVarietyChance(EDGE_TRANSITION_BASE_CHANCE, EDGE_TRANSITION_MAX_CHANCE, EDGE_TRANSITION_UNLOCK_SCORE)
+    ) {
+      geometryName = "edge";
+      edge = true;
+    }
+
+    if (!edge && !tier.tutorial && budgetLimit >= CHALLENGE_COSTS.longShot) {
       const longShotAvailable = availableHorizontalGap >= SPAWN_GAP_PROFILES.longShot.minX;
       const longShotOffCooldown = LONG_SHOT_COOLDOWN_TRANSITIONS <= 0 || !transitionHistory.lastWasLongShot;
       if (
@@ -1400,7 +1435,7 @@
       }
     }
 
-    if (!longShot && !tier.tutorial && budgetLimit >= CHALLENGE_COSTS.wide && score >= WIDE_GAP_UNLOCK_SCORE) {
+    if (!edge && !longShot && !tier.tutorial && budgetLimit >= CHALLENGE_COSTS.wide && score >= WIDE_GAP_UNLOCK_SCORE) {
       if (Math.random() < getVarietyChance(WIDE_GAP_BASE_CHANCE, WIDE_GAP_MAX_CHANCE, WIDE_GAP_UNLOCK_SCORE)) {
         const wideGeometry = chooseWideGeometry(availableHorizontalGap);
         if (wideGeometry) {
@@ -1410,7 +1445,9 @@
       }
     }
 
-    const geometryCost = Number(wide) * CHALLENGE_COSTS.wide + Number(longShot) * CHALLENGE_COSTS.longShot;
+    const geometryCost = Number(wide) * CHALLENGE_COSTS.wide
+      + Number(edge) * CHALLENGE_COSTS.edge
+      + Number(longShot) * CHALLENGE_COSTS.longShot;
     const features = chooseTargetChallenge(targetId, geometryName, budgetLimit - geometryCost);
     const plan = {
       tier: tier.name,
@@ -1421,6 +1458,7 @@
       profile: SPAWN_GAP_PROFILES[geometryName],
       direction,
       wide,
+      edge,
       longShot,
       fallback: false,
       features
@@ -1439,6 +1477,7 @@
       profile: SPAWN_GAP_PROFILES.fallback,
       direction: getSpawnDirection(source),
       wide: false,
+      edge: false,
       longShot: false,
       fallback: true,
       features: { moving: false, board: false, tilt: false }
@@ -1446,6 +1485,15 @@
   }
 
   function sampleHoopCandidate(source, targetId, plan) {
+    if (plan.edge) {
+      const edgeCenterInset = WALL_INSET + HOOP_WIDTH * 0.5 + RIM_RADIUS + EDGE_HOOP_WALL_GAP;
+      const inwardJitter = random(0, EDGE_HOOP_INWARD_JITTER);
+      const x = plan.direction > 0
+        ? WORLD_W - edgeCenterInset - inwardJitter
+        : edgeCenterInset + inwardJitter;
+      const yLift = random(plan.profile.minY, plan.profile.maxY);
+      return makeHoop(x, source.y - yLift, targetId, source, plan);
+    }
     const minX = WALL_INSET + HOOP_WALL_CLEARANCE;
     const maxX = WORLD_W - WALL_INSET - HOOP_WALL_CLEARANCE;
     const xDrift = random(plan.profile.minX, plan.profile.maxX);
@@ -1543,6 +1591,8 @@
     transitionHistory.lastDifficulty = plan.difficulty;
     transitionHistory.hardStreak = plan.difficulty === "hard" ? transitionHistory.hardStreak + 1 : 0;
     transitionHistory.lastWasLongShot = LONG_SHOT_COOLDOWN_TRANSITIONS > 0 && plan.longShot;
+    transitionHistory.lastWasNear = plan.geometryName === "normalNear";
+    transitionHistory.lastWasEdge = EDGE_TRANSITION_COOLDOWN > 0 && plan.edge;
   }
 
   function debugGameplayTransition(plan, source, target) {
@@ -1554,6 +1604,7 @@
       verticalGap: Number((source.y - target.y).toFixed(1)),
       geometry: plan.geometryName,
       longShot: plan.longShot,
+      edge: plan.edge,
       challengeBudget: plan.budget,
       fallback: plan.fallback
     });
@@ -1569,12 +1620,16 @@
       + Number(target.board) * CHALLENGE_COSTS.board
       + Number(Math.abs(target.rotation) > 0.001) * CHALLENGE_COSTS.tilt;
     const totalBudget = Number(plan.wide) * CHALLENGE_COSTS.wide
+      + Number(plan.edge) * CHALLENGE_COSTS.edge
       + Number(plan.longShot) * CHALLENGE_COSTS.longShot
       + targetChallengeCost;
     if (totalBudget > plan.budgetLimit || totalBudget !== plan.budget) return false;
     if (plan.longShot && targetChallengeCost > 0) return false;
     if (plan.longShot && Math.hypot(horizontalGap, verticalGap) < LONG_SHOT_MIN_CENTER_DISTANCE) return false;
     if (plan.wide && targetChallengeCost > 1) return false;
+    if (plan.edge && (hasBoard(source) || hasBoard(target))) return false;
+    if (plan.edge && (plan.wide || plan.longShot || targetChallengeCost > 0)) return false;
+    if (plan.geometryName === "normalNear" && Math.hypot(horizontalGap, verticalGap) < NORMAL_NEAR_MIN_CENTER_DISTANCE) return false;
     if (targetChallengeCost && verticalGap > CHALLENGED_MAX_VERTICAL_GAP) return false;
 
     if (target.moving && (target.board || Math.abs(target.rotation) > 0.001)) return false;
@@ -1587,7 +1642,7 @@
     if (target.moving && target.movementType === "vertical") {
       if (verticalGap - target.moveAmplitude < 142 || verticalGap + target.moveAmplitude > 210) return false;
     }
-    if (!plan.wide && !plan.longShot && !target.moving) return true;
+    if (!plan.wide && !plan.edge && !plan.longShot && !target.moving) return true;
     return isReachableTransition(source, target);
   }
 
@@ -1708,36 +1763,7 @@
       if (ball.settle) {
         updateBallSettle(dt);
       } else if (!ball.held) {
-        airborneTime += dt;
-        updateBallEffects(dt);
-        ball.prevX = ball.x;
-        ball.prevY = ball.y;
-        ball.vy += GRAVITY * dt;
-        ball.vx *= Math.pow(AIR_DRAG, dt * 60);
-        ball.vy *= Math.pow(AIR_DRAG, dt * 60);
-        ball.x += ball.vx * dt;
-        ball.y += ball.vy * dt;
-
-        if (ball.x - ball.r < WALL_INSET) {
-          ball.x = WALL_INSET + ball.r;
-          ball.vx = Math.abs(ball.vx) * 0.66;
-          registerWallTouch();
-        } else if (ball.x + ball.r > WORLD_W - WALL_INSET) {
-          ball.x = WORLD_W - WALL_INSET - ball.r;
-          ball.vx = -Math.abs(ball.vx) * 0.66;
-          registerWallTouch();
-        }
-
-        updateLaunchHoopSafety();
-        detectHoopState();
-        if (!ball.held && !ball.settle) collideHoops();
-
-        if (!ball.settle && ball.y - cameraY > WORLD_H + 90) {
-          if (!hasReachedSecondHoop && currentHoopId === 0) recoverFirstTransition();
-          else gameOver();
-        } else if (!ball.settle && !ball.held && airborneTime >= AIRBORNE_RETRY_DELAY) {
-          showRetry();
-        }
+        updateAirborneBall(dt);
       }
 
       const targetHoop = getHoopById(targetHoopId) || hoops[hoops.length - 1];
@@ -1769,6 +1795,39 @@
     updateHighScoreCelebration(dt);
     shake = Math.max(0, shake - dt * 26);
     comboText = Math.max(0, comboText - dt);
+  }
+
+  function updateAirborneBall(dt) {
+    airborneTime += dt;
+    updateBallEffects(dt);
+    ball.prevX = ball.x;
+    ball.prevY = ball.y;
+    ball.vy += GRAVITY * dt;
+    ball.vx *= Math.pow(AIR_DRAG, dt * 60);
+    ball.vy *= Math.pow(AIR_DRAG, dt * 60);
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+
+    if (ball.x - ball.r < WALL_INSET) {
+      ball.x = WALL_INSET + ball.r;
+      ball.vx = Math.abs(ball.vx) * 0.66;
+      registerWallTouch();
+    } else if (ball.x + ball.r > WORLD_W - WALL_INSET) {
+      ball.x = WORLD_W - WALL_INSET - ball.r;
+      ball.vx = -Math.abs(ball.vx) * 0.66;
+      registerWallTouch();
+    }
+
+    updateLaunchHoopSafety();
+    detectHoopState();
+    if (!ball.held && !ball.settle) collideHoops();
+
+    if (!ball.settle && ball.y - cameraY > WORLD_H + 90) {
+      if (!hasReachedSecondHoop && currentHoopId === 0) recoverFirstTransition();
+      else gameOver();
+    } else if (!ball.settle && !ball.held && airborneTime >= AIRBORNE_RETRY_DELAY) {
+      showRetry();
+    }
   }
 
   function playHoopReleaseAnimation(hoop, pull) {
@@ -3592,10 +3651,7 @@
       canvas.releasePointerCapture(activePointer);
     }
     activePointer = null;
-    if (animationFrameId !== null) {
-      window.cancelAnimationFrame(animationFrameId);
-      animationFrameId = null;
-    }
+    stopAnimationLoop();
     if (audioContext && audioContext.state === "running") audioContext.suspend().catch(() => {});
     pauseOverlay.classList.add("active");
     settingsOverlay.classList.remove("active");
@@ -3608,9 +3664,8 @@
     state = "playing";
     pauseOverlay.classList.remove("active");
     syncUiState();
-    lastTime = performance.now();
     if (platformAudioEnabled && !muted && audioContext) audioContext.resume().catch(() => {});
-    ensureAnimationLoop();
+    restartAnimationLoop();
   }
 
   function openPauseSettings() {
@@ -3649,14 +3704,36 @@
     settingsOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
     resetGame(true);
-    ensureAnimationLoop();
+    restartAnimationLoop();
   }
 
-  function ensureAnimationLoop() {
-    if (!platformPaused && !userPaused && animationFrameId === null) {
-      lastTime = performance.now();
-      animationFrameId = window.requestAnimationFrame(loop);
-    }
+  function canRunAnimationLoop() {
+    return platformReady && !platformPaused && !userPaused && document.visibilityState !== "hidden";
+  }
+
+  function stopAnimationLoop() {
+    animationLoopGeneration += 1;
+    if (animationFrameId !== null) window.cancelAnimationFrame(animationFrameId);
+    animationFrameId = null;
+    lastTime = 0;
+  }
+
+  function restartAnimationLoop() {
+    stopAnimationLoop();
+    if (!canRunAnimationLoop()) return;
+
+    const generation = animationLoopGeneration;
+    animationFrameId = window.requestAnimationFrame((now) => {
+      if (generation !== animationLoopGeneration) return;
+      if (!canRunAnimationLoop()) {
+        stopAnimationLoop();
+        return;
+      }
+
+      // Align with the browser's current paint cadence before physics begins.
+      lastTime = now;
+      animationFrameId = window.requestAnimationFrame((nextNow) => loop(nextNow, generation, true));
+    });
   }
 
   function handlePlatformAudioChange(enabled) {
@@ -3678,10 +3755,7 @@
       canvas.releasePointerCapture(activePointer);
     }
     activePointer = null;
-    if (animationFrameId !== null) {
-      window.cancelAnimationFrame(animationFrameId);
-      animationFrameId = null;
-    }
+    stopAnimationLoop();
     if (audioContext && audioContext.state === "running") audioContext.suspend().catch(() => {});
     flushScoreSubmission();
     flushPlatformSave();
@@ -3691,11 +3765,8 @@
     if (!platformPaused) return;
     platformPaused = false;
     gameShell.inert = false;
-    lastTime = performance.now();
     if (platformAudioEnabled && !muted && !userPaused && audioContext) audioContext.resume().catch(() => {});
-    if (platformReady && !userPaused && animationFrameId === null) {
-      animationFrameId = window.requestAnimationFrame(loop);
-    }
+    restartAnimationLoop();
   }
 
   function playTone(freq, duration, type, gain, delay, endFreq) {
@@ -3715,16 +3786,35 @@
     osc.stop(now + duration + 0.02);
   }
 
-  function loop(now) {
-    if (platformPaused || userPaused) {
-      animationFrameId = null;
+  function loop(now, generation, firstPhysicsFrame) {
+    if (generation !== animationLoopGeneration) return;
+    if (!canRunAnimationLoop()) {
+      stopAnimationLoop();
       return;
     }
-    const dt = Math.min(0.033, (now - lastTime) / 1000 || 0);
+    const dt = firstPhysicsFrame ? 0 : Math.min(0.033, (now - lastTime) / 1000 || 0);
     lastTime = now;
     update(dt);
     draw();
-    animationFrameId = window.requestAnimationFrame(loop);
+    if (generation !== animationLoopGeneration || !canRunAnimationLoop()) return;
+    animationFrameId = window.requestAnimationFrame((nextNow) => loop(nextNow, generation, false));
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === "hidden") stopAnimationLoop();
+    else restartAnimationLoop();
+  }
+
+  function handlePageShow() {
+    if (document.visibilityState !== "hidden") restartAnimationLoop();
+  }
+
+  function handlePageHide() {
+    stopAnimationLoop();
+  }
+
+  function handleWindowFocus() {
+    if (document.visibilityState !== "hidden") restartAnimationLoop();
   }
 
   async function bootGame() {
@@ -3763,8 +3853,7 @@
     platformReady = true;
     gameShell.inert = platformPaused;
     if (playablesBridge) playablesBridge.gameReady();
-    lastTime = performance.now();
-    if (!platformPaused) animationFrameId = window.requestAnimationFrame(loop);
+    restartAnimationLoop();
   }
 
   function clamp(value, min, max) {
@@ -3777,6 +3866,10 @@
 
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("orientationchange", resize, { passive: true });
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("pageshow", handlePageShow);
+  window.addEventListener("pagehide", handlePageHide);
+  window.addEventListener("focus", handleWindowFocus);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
