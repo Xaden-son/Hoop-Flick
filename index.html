@@ -11,7 +11,7 @@
   <title>Hoop Flick</title>
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="favicon.png">
-  <link rel="stylesheet" href="style.css?v=dev-20260626-3">
+  <link rel="stylesheet" href="style.css?v=testsuite-cp3-cachefix-20260720-1">
 </head>
 <body> 
   <main id="gameShell" aria-label="Hoop Flick basketball arcade game">
@@ -57,6 +57,10 @@
           <strong id="ballCoinBalanceValue">0</strong>
         </div>
         <p id="ballEconomyStatus" class="economyStatus" role="status" aria-live="polite"></p>
+        <button id="ballRewardedCoinButton" class="secondaryButton rewardedCoinButton" type="button" aria-busy="false" disabled>
+          <span class="coinIcon" aria-hidden="true"></span>
+          <span>Reklam kullanılamıyor</span>
+        </button>
         <div id="ballSkinList" class="ballSkinList" role="listbox" data-i18n-aria-label="chooseBall"></div>
         <div class="menuActions">
           <button id="customizeBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
@@ -74,6 +78,10 @@
           <strong id="themeCoinBalanceValue">0</strong>
         </div>
         <p id="themeEconomyStatus" class="economyStatus" role="status" aria-live="polite"></p>
+        <button id="themeRewardedCoinButton" class="secondaryButton rewardedCoinButton" type="button" aria-busy="false" disabled>
+          <span class="coinIcon" aria-hidden="true"></span>
+          <span>Reklam kullanılamıyor</span>
+        </button>
         <div id="themeList" class="themeList" role="listbox" data-i18n-aria-label="backgroundTheme"></div>
         <div class="menuActions">
           <button id="themeBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
@@ -90,6 +98,21 @@
           <button id="pauseMainMenuButton" class="primaryButton" type="button" data-i18n="returnMainMenu">Ana Menüye Dön</button>
           <button id="pauseSettingsButton" class="secondaryButton" type="button" data-i18n="settings">Ayarlar</button>
         </div>
+      </div>
+    </section>
+
+    <section id="reviveOfferOverlay" class="overlay reviveOfferOverlay" aria-live="assertive">
+      <div class="panel compact reviveOfferPanel">
+        <span class="eyebrow" data-i18n="lastChance">SON ŞANS</span>
+        <h2 data-i18n="continueRun">Oyuna Devam Et</h2>
+        <p data-i18n="continueRunHint">Reklam izleyerek bu run'a kaldığın yerden devam et.</p>
+        <p class="reviveCountdown">
+          <span data-i18n="decisionTime">Karar süresi</span>
+          <strong id="reviveOfferCountdown">6.0</strong>
+        </p>
+        <p id="reviveOfferStatus" class="rewardedStatus" role="status" aria-live="polite"></p>
+        <button id="reviveRewardButton" class="primaryButton" type="button" aria-busy="false" data-i18n="watchAdContinue">Reklam İzle ve Devam Et</button>
+        <button id="reviveFinishButton" class="secondaryButton overlaySecondaryButton" type="button" data-i18n="finishRun">Bitir</button>
       </div>
     </section>
 
@@ -131,9 +154,7 @@
       </div>
     </div>
   </main>
-  <script src="playablesBridge.js?v=dev-20260620-1"></script>
-  <script src="game.js?v=dev-20260626-4"></script>
+  <script src="playablesBridge.js?v=testsuite-cp3-cachefix-20260720-1"></script>
+  <script src="game.js?v=testsuite-cp3-cachefix-20260720-1"></script>
 </body>
 </html>
-
-

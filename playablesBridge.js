@@ -105,6 +105,21 @@
     }
   }
 
+  function isRewardedAdAvailable() {
+    return Boolean(inPlayablesEnv && sdk && sdk.ads && typeof sdk.ads.requestRewardedAd === "function");
+  }
+
+  async function requestRewardedAd(rewardId) {
+    if (!isRewardedAdAvailable() || typeof rewardId !== "string" || !rewardId) return false;
+    try {
+      const result = callSdk("ads", "requestRewardedAd", [rewardId]);
+      return await Promise.resolve(result) === true;
+    } catch (error) {
+      report("warning", "Rewarded ad request failed", error);
+      return false;
+    }
+  }
+
   function firstFrameReady() {
     if (firstFrameSent) return;
     firstFrameSent = true;
@@ -177,6 +192,8 @@
     sendScore,
     loadData,
     saveData,
+    isRewardedAdAvailable,
+    requestRewardedAd,
     isAudioEnabled: () => audioEnabled,
     getLanguage,
     isInPlayablesEnv: () => inPlayablesEnv,

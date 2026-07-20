@@ -32,9 +32,11 @@
   const ballCoinBalance = document.getElementById("ballCoinBalance");
   const ballCoinBalanceValue = document.getElementById("ballCoinBalanceValue");
   const ballEconomyStatus = document.getElementById("ballEconomyStatus");
+  const ballRewardedCoinButton = document.getElementById("ballRewardedCoinButton");
   const themeCoinBalance = document.getElementById("themeCoinBalance");
   const themeCoinBalanceValue = document.getElementById("themeCoinBalanceValue");
   const themeEconomyStatus = document.getElementById("themeEconomyStatus");
+  const themeRewardedCoinButton = document.getElementById("themeRewardedCoinButton");
   const restartButton = document.getElementById("restartButton");
   const gameOverMenuButton = document.getElementById("gameOverMenuButton");
   const retryButton = document.getElementById("retryButton");
@@ -46,6 +48,11 @@
   const finalScore = document.getElementById("finalScore");
   const coinHud = document.getElementById("coinHud");
   const coinHudValue = document.getElementById("coinHudValue");
+  const reviveOfferOverlay = document.getElementById("reviveOfferOverlay");
+  const reviveOfferCountdown = document.getElementById("reviveOfferCountdown");
+  const reviveOfferStatus = document.getElementById("reviveOfferStatus");
+  const reviveRewardButton = document.getElementById("reviveRewardButton");
+  const reviveFinishButton = document.getElementById("reviveFinishButton");
 
   const STORAGE_KEY = "hoop-flick-best";
   const DARK_MODE_KEY = "hoop-flick-dark-mode";
@@ -101,6 +108,10 @@
   const COIN_COLLECT_PARTICLE_COUNT = 8;
   const MAX_PARTICLES = 160;
   const MAX_SHOT_RINGS = 12;
+  const COIN_REWARD_ID = "hoop-flick-coins-25-v1";
+  const CONTINUE_REWARD_ID = "hoop-flick-continue-once-v1";
+  const REWARDED_COIN_AMOUNT = 25;
+  const REVIVE_OFFER_DURATION = 6;
   const SPAWN_ATTEMPTS = 14;
   const MIN_HOOP_TILT = 2.5 * (Math.PI / 180);
   const MAX_HOOP_TILT = 7 * (Math.PI / 180);
@@ -923,6 +934,11 @@
       owned: "Sahip",
       insufficientCoins: "Yetersiz coin",
       purchased: "Satın alındı",
+      watchAdCoins: "Reklam İzle · +25 Coin",
+      rewardedUnavailable: "Reklam şu anda kullanılamıyor",
+      rewardedPending: "Reklam açılıyor…",
+      rewardedCoinsGranted: "+25 coin kazandın",
+      rewardedNotEarned: "Ödül alınamadı",
       chooseTheme: "Tema seç",
       selectedTheme: "Seçili tema",
       themeGym: "Klasik",
@@ -949,6 +965,12 @@
       comingSoon: "Yakında",
       comingSoonText: "Yeni toplar ve efektler sonraki güncellemede burada olacak.",
       gameOver: "Oyun Bitti",
+      lastChance: "SON ŞANS",
+      continueRun: "Oyuna Devam Et",
+      continueRunHint: "Reklam izleyerek bu run'a kaldığın yerden devam et.",
+      decisionTime: "Karar süresi",
+      watchAdContinue: "Reklam İzle ve Devam Et",
+      finishRun: "Bitir",
       restart: "Yeniden Başlat",
       mainMenu: "Ana Menü",
       returnMainMenu: "Ana Menüye Dön",
@@ -995,6 +1017,11 @@
       owned: "Owned",
       insufficientCoins: "Not enough coins",
       purchased: "Purchased",
+      watchAdCoins: "Watch Ad · +25 Coins",
+      rewardedUnavailable: "Ad currently unavailable",
+      rewardedPending: "Opening ad…",
+      rewardedCoinsGranted: "+25 coins earned",
+      rewardedNotEarned: "Reward not earned",
       chooseTheme: "Choose theme",
       selectedTheme: "Selected theme",
       themeGym: "Classic",
@@ -1021,6 +1048,12 @@
       comingSoon: "Coming Soon",
       comingSoonText: "New balls and effects will arrive here in a future update.",
       gameOver: "Game Over",
+      lastChance: "LAST CHANCE",
+      continueRun: "Continue Your Run",
+      continueRunHint: "Watch an ad to continue this run from where you left off.",
+      decisionTime: "Decision time",
+      watchAdContinue: "Watch Ad and Continue",
+      finishRun: "Finish",
       restart: "Restart",
       mainMenu: "Main Menu",
       returnMainMenu: "Return to Main Menu",
@@ -1110,6 +1143,12 @@
   let coinTargetsRemaining = COIN_INTERVAL_MIN;
   let coinSpawnDue = false;
   let coinFeedback = null;
+  let rewardedRequest = null;
+  let rewardedRequestSequence = 0;
+  let reviveUsed = false;
+  let gameOverFinalized = false;
+  let reviveOfferRemaining = 0;
+  let reviveOfferActive = false;
   let hoops = [];
   let currentHoopId = 0;
   let targetHoopId = 1;
@@ -1205,6 +1244,11 @@
     particles = [];
     shotRings = [];
     resetCoinRun();
+    reviveUsed = false;
+    gameOverFinalized = false;
+    reviveOfferRemaining = 0;
+    reviveOfferActive = false;
+    if (reviveOfferStatus) reviveOfferStatus.textContent = "";
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
     }
@@ -1227,10 +1271,12 @@
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
     pauseOverlay.classList.remove("active");
+    reviveOfferOverlay?.classList.remove("active");
     gameOverOverlay.classList.remove("active");
     retryOverlay.classList.remove("active");
     retryButton.blur();
     syncUiState();
+    syncRewardedUi();
   }
 
   function makeStartHoop() {
@@ -1313,13 +1359,49 @@
   }
 
   function startGame() {
-    if (!platformReady || platformPaused) return;
+    if (!platformReady || platformPaused || rewardedRequest) return;
     ensureAudio();
     resetGame(false);
     playGameSound("start");
   }
 
-  function gameOver() {
+  function beginGameOver() {
+    if (gameOverFinalized || state === "revive-offer") return false;
+    airborneTime = 0;
+    ball.angularVelocity = 0;
+    drag = null;
+    if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
+      canvas.releasePointerCapture(activePointer);
+    }
+    activePointer = null;
+    if (score > 0 && !reviveUsed && !rewardedRequest && hasRewardedCapability()) {
+      return beginReviveOffer();
+    }
+    return finalizeGameOver();
+  }
+
+  function beginReviveOffer() {
+    if (score <= 0 || gameOverFinalized || reviveUsed || rewardedRequest || !hasRewardedCapability()) {
+      return finalizeGameOver();
+    }
+    state = "revive-offer";
+    reviveOfferActive = true;
+    reviveOfferRemaining = REVIVE_OFFER_DURATION;
+    if (reviveOfferCountdown) reviveOfferCountdown.textContent = reviveOfferRemaining.toFixed(1);
+    if (reviveOfferStatus) reviveOfferStatus.textContent = "";
+    retryOverlay.classList.remove("active");
+    gameOverOverlay.classList.remove("active");
+    reviveOfferOverlay?.classList.add("active");
+    syncUiState();
+    syncRewardedUi();
+    return true;
+  }
+
+  function finalizeGameOver() {
+    if (gameOverFinalized) return false;
+    gameOverFinalized = true;
+    reviveOfferActive = false;
+    reviveOfferRemaining = 0;
     state = "gameover";
     airborneTime = 0;
     ball.angularVelocity = 0;
@@ -1327,11 +1409,55 @@
     best = Math.max(best, score);
     writeBestScore(best, best > previousBest);
     flushScoreSubmission();
+    void flushPlatformSave();
     bestValue.textContent = String(best);
     finalScore.textContent = t("score") + " " + score;
+    reviveOfferOverlay?.classList.remove("active");
     retryOverlay.classList.remove("active");
     gameOverOverlay.classList.add("active");
+    syncUiState();
+    syncRewardedUi();
     playGameSound("gameover");
+    return true;
+  }
+
+  function resumeFromRewardedContinue(restartLoop) {
+    if (gameOverFinalized || reviveUsed || state !== "revive-offer") return false;
+    const currentHoop = getHoopById(currentHoopId);
+    if (!currentHoop) return finalizeGameOver();
+    reviveUsed = true;
+    reviveOfferActive = false;
+    reviveOfferRemaining = 0;
+    swishStreak = 0;
+    perfectChain = 0;
+    comboText = 0;
+    lastScoreGain = 1;
+    scoreFeedbackText = t("nice") + " +1";
+    lastWasPerfect = false;
+    lastWasBounce = false;
+    shake = 0;
+    particles = [];
+    shotRings = [];
+    coinFeedback = null;
+    highScoreCelebration.elapsed = 0;
+    highScoreCelebration.active = false;
+    highScoreCelebration.confetti = [];
+    drag = null;
+    if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
+      canvas.releasePointerCapture(activePointer);
+    }
+    activePointer = null;
+    placeBallInHoop(currentHoop);
+    ball.scoredHoopId = currentHoopId;
+    setHoopRoles(currentHoopId, targetHoopId);
+    state = "playing";
+    reviveOfferOverlay?.classList.remove("active");
+    retryOverlay.classList.remove("active");
+    gameOverOverlay.classList.remove("active");
+    syncUiState();
+    syncRewardedUi();
+    if (restartLoop !== false && !platformPaused) restartAnimationLoop();
+    return true;
   }
 
   function recoverFirstTransition() {
@@ -1879,7 +2005,7 @@
   }
 
   function onPointerDown(event) {
-    if (!platformReady || platformPaused || userPaused || state !== "playing" || activePointer !== null) return;
+    if (!platformReady || platformPaused || userPaused || rewardedRequest || state !== "playing" || activePointer !== null) return;
     const settleCanBeSkipped = ball.settle && ball.settle.elapsed >= BALL_SETTLE_INPUT_DELAY;
     if (!ball.held && !settleCanBeSkipped) return;
     const p = screenToWorld(event.clientX, event.clientY);
@@ -1950,6 +2076,12 @@
   }
 
   function update(dt) {
+    if (state === "revive-offer") {
+      updateReviveOffer(dt);
+      return;
+    }
+    if (rewardedRequest) return;
+
     for (const hoop of hoops) {
       hoop.entranceTimer = Math.min(1, (hoop.entranceTimer ?? hoop.spawnProgress ?? 1) + dt / HOOP_SPAWN_DURATION);
       hoop.spawnProgress = hoop.entranceTimer;
@@ -1981,6 +2113,8 @@
       } else if (!ball.held) {
         updateAirborneBall(dt);
       }
+
+      if (state === "revive-offer") return;
 
       const targetHoop = getHoopById(targetHoopId) || hoops[hoops.length - 1];
       const leadY = ball.held || ball.settle
@@ -2046,7 +2180,7 @@
 
     if (!ball.settle && ball.y - cameraY > WORLD_H + 90) {
       if (!hasReachedSecondHoop && currentHoopId === 0) recoverFirstTransition();
-      else gameOver();
+      else beginGameOver();
     } else if (!ball.settle && !ball.held && airborneTime >= AIRBORNE_RETRY_DELAY) {
       showRetry();
     }
@@ -2883,7 +3017,7 @@
   }
 
   function drawCurrentScore() {
-    if (state !== "playing" && state !== "paused" && state !== "pause-settings" && state !== "retry" && state !== "gameover") return;
+    if (state !== "playing" && state !== "paused" && state !== "pause-settings" && state !== "retry" && state !== "revive-offer" && state !== "gameover") return;
     const colors = getCanvasTheme();
     ctx.save();
     ctx.globalAlpha = 0.11;
@@ -3881,6 +4015,7 @@
     renderBallCustomizer();
     renderThemeCustomizer();
     syncControlLabels();
+    syncRewardedUi();
   }
 
   function getSelectedBallSkin() {
@@ -3902,6 +4037,150 @@
     if (coinHud) coinHud.setAttribute("aria-label", label);
     if (ballCoinBalance) ballCoinBalance.setAttribute("aria-label", label);
     if (themeCoinBalance) themeCoinBalance.setAttribute("aria-label", label);
+  }
+
+  function hasRewardedCapability() {
+    if (!playablesBridge || typeof playablesBridge.isRewardedAdAvailable !== "function") return false;
+    try {
+      return playablesBridge.isRewardedAdAvailable() === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function syncRewardedUi() {
+    const available = hasRewardedCapability();
+    const busy = Boolean(rewardedRequest);
+    const coinLabel = busy
+      ? t("rewardedPending")
+      : available
+        ? t("watchAdCoins")
+        : t("rewardedUnavailable");
+    for (const button of [ballRewardedCoinButton, themeRewardedCoinButton]) {
+      if (!button) continue;
+      const label = button.querySelector("span:last-child");
+      if (label) label.textContent = coinLabel;
+      button.disabled = !platformReady || platformPaused || !available || busy;
+      button.setAttribute("aria-busy", String(busy));
+      button.setAttribute("aria-label", coinLabel);
+      button.title = available ? "" : t("rewardedUnavailable");
+    }
+
+    const continuePending = rewardedRequest?.kind === "continue";
+    if (reviveRewardButton) {
+      reviveRewardButton.disabled = state !== "revive-offer" || platformPaused || !available || busy;
+      reviveRewardButton.setAttribute("aria-busy", String(continuePending));
+      reviveRewardButton.textContent = continuePending ? t("rewardedPending") : t("watchAdContinue");
+    }
+    if (reviveFinishButton) {
+      reviveFinishButton.disabled = state !== "revive-offer" || platformPaused || continuePending;
+    }
+  }
+
+  function requestRewardedCoins(origin) {
+    if (!platformReady || platformPaused || rewardedRequest || !hasRewardedCapability()) {
+      syncRewardedUi();
+      return false;
+    }
+    clearEconomyStatus(origin);
+    return startRewardedRequest("coins", COIN_REWARD_ID, origin);
+  }
+
+  function requestRewardedContinue() {
+    if (
+      state !== "revive-offer"
+      || !reviveOfferActive
+      || gameOverFinalized
+      || reviveUsed
+      || platformPaused
+      || rewardedRequest
+      || !hasRewardedCapability()
+    ) {
+      if (state === "revive-offer" && !rewardedRequest) finalizeGameOver();
+      return false;
+    }
+    if (reviveOfferStatus) reviveOfferStatus.textContent = t("rewardedPending");
+    return startRewardedRequest("continue", CONTINUE_REWARD_ID, "revive");
+  }
+
+  function startRewardedRequest(kind, rewardId, origin) {
+    if (rewardedRequest || !playablesBridge || typeof playablesBridge.requestRewardedAd !== "function") return false;
+    const request = {
+      id: rewardedRequestSequence += 1,
+      kind,
+      origin,
+      settled: false,
+      earned: false
+    };
+    rewardedRequest = request;
+    syncRewardedUi();
+    let result;
+    try {
+      result = playablesBridge.requestRewardedAd(rewardId);
+    } catch (error) {
+      settleRewardedRequest(request, false);
+      return true;
+    }
+    Promise.resolve(result).then(
+      (earned) => settleRewardedRequest(request, earned === true),
+      () => settleRewardedRequest(request, false)
+    );
+    return true;
+  }
+
+  function settleRewardedRequest(request, earned) {
+    if (rewardedRequest !== request || request.settled) return;
+    request.settled = true;
+    request.earned = earned === true;
+    if (platformPaused) {
+      syncRewardedUi();
+      return;
+    }
+    completeRewardedRequest(request);
+  }
+
+  function completeRewardedRequest(request, restartLoop) {
+    if (rewardedRequest !== request || !request.settled || platformPaused) return false;
+    rewardedRequest = null;
+    if (request.kind === "coins") {
+      if (request.earned === true) {
+        coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + REWARDED_COIN_AMOUNT);
+        syncEconomyBalances();
+        showEconomyStatus(request.origin, t("rewardedCoinsGranted"));
+        requestSave(true);
+      } else {
+        showEconomyStatus(request.origin, t("rewardedNotEarned"));
+      }
+      syncRewardedUi();
+      return true;
+    }
+    if (request.kind === "continue" && state === "revive-offer" && !gameOverFinalized) {
+      if (reviveOfferStatus) reviveOfferStatus.textContent = request.earned === true ? "" : t("rewardedNotEarned");
+      if (request.earned === true) {
+        resumeFromRewardedContinue(restartLoop);
+      } else {
+        finalizeGameOver();
+      }
+    }
+    syncRewardedUi();
+    return true;
+  }
+
+  function processDeferredRewardedRequest() {
+    if (!rewardedRequest?.settled || platformPaused) return false;
+    return completeRewardedRequest(rewardedRequest, false);
+  }
+
+  function declineReviveOffer() {
+    if (state !== "revive-offer" || rewardedRequest?.kind === "continue") return false;
+    return finalizeGameOver();
+  }
+
+  function updateReviveOffer(dt) {
+    if (!reviveOfferActive || state !== "revive-offer" || rewardedRequest?.kind === "continue") return;
+    reviveOfferRemaining = Math.max(0, reviveOfferRemaining - dt);
+    if (reviveOfferCountdown) reviveOfferCountdown.textContent = reviveOfferRemaining.toFixed(1);
+    if (reviveOfferRemaining <= 0) finalizeGameOver();
   }
 
   function clearEconomyStatus(kind) {
@@ -4038,7 +4317,7 @@
   }
 
   function selectBallSkin(skinId) {
-    if (!BALL_SKINS[skinId] || platformPaused) return;
+    if (!BALL_SKINS[skinId] || platformPaused || rewardedRequest) return;
     const price = ECONOMY_PRICES.ball[skinId] ?? 0;
     const isOwned = ownedBallSkins.has(skinId);
     if (!isOwned && coins < price) {
@@ -4062,7 +4341,7 @@
   }
 
   function selectTheme(themeId) {
-    if (!THEMES[themeId] || platformPaused) return;
+    if (!THEMES[themeId] || platformPaused || rewardedRequest) return;
     const price = ECONOMY_PRICES.theme[themeId] ?? 0;
     const isOwned = ownedThemes.has(themeId);
     if (!isOwned && coins < price) {
@@ -4281,6 +4560,7 @@
     }
     activePointer = null;
     stopAnimationLoop();
+    syncRewardedUi();
     if (audioContext && audioContext.state === "running") audioContext.suspend().catch(() => {});
     flushScoreSubmission();
     flushPlatformSave();
@@ -4291,6 +4571,8 @@
     platformPaused = false;
     gameShell.inert = false;
     if (platformAudioEnabled && !muted && !userPaused && audioContext) audioContext.resume().catch(() => {});
+    processDeferredRewardedRequest();
+    syncRewardedUi();
     restartAnimationLoop();
   }
 
@@ -4386,6 +4668,7 @@
     persistenceReady = true;
     platformReady = true;
     gameShell.inert = platformPaused;
+    syncRewardedUi();
     if (shouldPersistMigratedSave) requestSave(true);
     if (playablesBridge) playablesBridge.gameReady();
     restartAnimationLoop();
@@ -4420,6 +4703,10 @@
   settingsBackButton.addEventListener("click", closeSettings);
   customizeBackButton.addEventListener("click", returnToMainMenu);
   if (themeBackButton) themeBackButton.addEventListener("click", returnToMainMenu);
+  ballRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("ball"));
+  themeRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("theme"));
+  reviveRewardButton?.addEventListener("click", requestRewardedContinue);
+  reviveFinishButton?.addEventListener("click", declineReviveOffer);
   menuButton.addEventListener("click", toggleGameplayPause);
   pauseMainMenuButton.addEventListener("click", exitGameplayToMainMenu);
   pauseSettingsButton.addEventListener("click", openPauseSettings);
