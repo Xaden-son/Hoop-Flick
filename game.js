@@ -29,6 +29,12 @@
   const customizeBallName = document.getElementById("customizeBallName");
   const ballSkinList = document.getElementById("ballSkinList");
   const themeList = document.getElementById("themeList");
+  const ballCoinBalance = document.getElementById("ballCoinBalance");
+  const ballCoinBalanceValue = document.getElementById("ballCoinBalanceValue");
+  const ballEconomyStatus = document.getElementById("ballEconomyStatus");
+  const themeCoinBalance = document.getElementById("themeCoinBalance");
+  const themeCoinBalanceValue = document.getElementById("themeCoinBalanceValue");
+  const themeEconomyStatus = document.getElementById("themeEconomyStatus");
   const restartButton = document.getElementById("restartButton");
   const gameOverMenuButton = document.getElementById("gameOverMenuButton");
   const retryButton = document.getElementById("retryButton");
@@ -45,6 +51,8 @@
   const LANGUAGE_KEY = "hoop-flick-language";
   const BALL_SKIN_KEY = "hoop-flick-ball-skin";
   const THEME_KEY = "hoop-flick-theme";
+  const LOCAL_SAVE_KEY = "hoop-flick-save-v4";
+  const SAVE_VERSION = 4;
   const WORLD_W = 420;
   const WORLD_H = 746;
   const START_HOOP_BOTTOM_OFFSET = 183;
@@ -157,6 +165,32 @@
       maxY: MAX_HOOP_VERTICAL_GAP
     }
   };
+
+  const ECONOMY_PRICES = Object.freeze({
+    ball: Object.freeze({
+      classic: 0,
+      inverted: 20,
+      neon: 30,
+      watermelon: 40,
+      magma: 50,
+      gold: 60,
+      ghost: 75,
+      toxic: 90,
+      matrix: 110,
+      earth: 130,
+      cyberpunk: 150,
+      bloodMoon: 175,
+      zebra: 200,
+      sun: 225
+    }),
+    theme: Object.freeze({
+      gym: 0,
+      sunset: 75,
+      neon: 125,
+      rooftop: 175,
+      minimal: 225
+    })
+  });
 
   const BALL_EFFECT_PRESETS = {
     classic: {
@@ -873,6 +907,12 @@
       chooseBall: "Topunu Seç",
       ballCollectionHint: "Yeni top stilleri için hazır koleksiyon.",
       backgroundTheme: "Arka Plan Teması",
+      coins: "Coin",
+      coinBalance: "Coin bakiyesi",
+      locked: "Kilitli",
+      owned: "Sahip",
+      insufficientCoins: "Yetersiz coin",
+      purchased: "Satın alındı",
       chooseTheme: "Tema seç",
       selectedTheme: "Seçili tema",
       themeGym: "Klasik",
@@ -939,6 +979,12 @@
       chooseBall: "Choose Your Ball",
       ballCollectionHint: "A collection ready for future ball styles.",
       backgroundTheme: "Background Theme",
+      coins: "Coins",
+      coinBalance: "Coin balance",
+      locked: "Locked",
+      owned: "Owned",
+      insufficientCoins: "Not enough coins",
+      purchased: "Purchased",
       chooseTheme: "Choose theme",
       selectedTheme: "Selected theme",
       themeGym: "Classic",
@@ -1018,6 +1064,12 @@
   let animationFrameId = null;
   let animationLoopGeneration = 0;
   let cloudSaveTimer = null;
+  let persistenceReady = false;
+  let saveDirty = false;
+  let saveRevision = 0;
+  let savedRevision = 0;
+  let saveInFlight = false;
+  let saveDrainQueued = false;
   let scoreSubmitTimer = null;
   let pendingHighScore = null;
   let settingsOrigin = "menu";
@@ -1065,6 +1117,10 @@
   };
   let selectedBallSkinId = readBallSkinPreference();
   let selectedThemeId = readThemePreference();
+  let coins = 0;
+  let ownedBallSkins = new Set(["classic"]);
+  let ownedThemes = new Set(["gym"]);
+  const economyStatusTimers = { ball: null, theme: null };
   const ballEffects = {
     selectedPreset: BALL_SKINS[selectedBallSkinId]?.effectPreset || "classic",
     trailCooldown: 0
@@ -3218,16 +3274,16 @@
 
   function writeBestScore(value, isNewRecord) {
     if (!Number.isSafeInteger(value) || value < 0) return;
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      if (isNewRecord) scheduleScoreSubmission(value);
-      return;
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(value));
+      } catch (error) {
+        // Storage can be unavailable in some embedded/browser privacy modes.
+      }
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, String(value));
-    } catch (error) {
-      // Storage can be unavailable in some embedded/browser privacy modes.
-    }
+    schedulePlatformSave();
+    if (isPlayablesEnv && isNewRecord) scheduleScoreSubmission(value);
   }
 
   function readBooleanPreference(key, fallback) {
@@ -3278,84 +3334,274 @@
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.tr[key] || key;
   }
 
-  function writeBooleanPreference(key, value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
-    }
-    try {
-      localStorage.setItem(key, String(value));
-    } catch (error) {
-      // Preferences can be unavailable in embedded/browser privacy modes.
-    }
+  function normalizeCoins(value) {
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
   }
 
-  function writeLanguagePreference(value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
+  function normalizeOwnedIds(value, catalog, defaultId) {
+    const owned = new Set([defaultId]);
+    if (!Array.isArray(value)) return owned;
+    for (const id of value) {
+      if (typeof id === "string" && catalog[id]) owned.add(id);
     }
-    try {
-      localStorage.setItem(LANGUAGE_KEY, value);
-    } catch (error) {
-      // Language preferences can be unavailable in privacy modes.
-    }
+    return owned;
   }
 
-  function writeBallSkinPreference(value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
-    }
-    try {
-      localStorage.setItem(BALL_SKIN_KEY, value);
-    } catch (error) {
-      // Ball selection can be unavailable in privacy modes.
-    }
+  function hasCanonicalOwnedIds(value, owned, catalog) {
+    if (!Array.isArray(value)) return false;
+    const canonical = Object.keys(catalog).filter((id) => owned.has(id));
+    return value.length === canonical.length && value.every((id, index) => id === canonical[index]);
   }
 
-  function writeThemePreference(value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
+  function migrateSaveData(save, platformLocale, allowSavedLanguage) {
+    const source = save && typeof save === "object" && !Array.isArray(save) ? save : null;
+    const version = source && Number.isSafeInteger(source.version) ? source.version : 0;
+    const settings = source && source.settings && typeof source.settings === "object"
+      ? source.settings
+      : source || {};
+    const savedScore = source ? Number(source.highScore) : 0;
+    const highScore = Number.isSafeInteger(savedScore) && savedScore >= 0 ? savedScore : 0;
+    const normalizedCoins = version >= SAVE_VERSION ? normalizeCoins(source?.coins) : 0;
+    let ballSkin = normalizeBallSkinId(settings.ballSkin);
+    let theme = THEMES[settings.theme] ? settings.theme : "gym";
+    const balls = version >= SAVE_VERSION
+      ? normalizeOwnedIds(source?.ownedBallSkins, BALL_SKINS, "classic")
+      : new Set(["classic", ballSkin]);
+    const themes = version >= SAVE_VERSION
+      ? normalizeOwnedIds(source?.ownedThemes, THEMES, "gym")
+      : new Set(["gym", theme]);
+
+    if (!balls.has(ballSkin)) ballSkin = "classic";
+    if (!themes.has(theme)) theme = "gym";
+
+    let migratedLanguage = language;
+    if (allowSavedLanguage && (settings.language === "tr" || settings.language === "en")) {
+      migratedLanguage = settings.language;
+    } else if (typeof platformLocale === "string" && platformLocale) {
+      migratedLanguage = platformLocale.toLowerCase().startsWith("tr") ? "tr" : "en";
     }
+
+    const needsMigration = Boolean(source) && (
+      version !== SAVE_VERSION
+      || highScore !== source.highScore
+      || normalizedCoins !== source.coins
+      || !hasCanonicalOwnedIds(source.ownedBallSkins, balls, BALL_SKINS)
+      || !hasCanonicalOwnedIds(source.ownedThemes, themes, THEMES)
+      || settings.ballSkin !== ballSkin
+      || settings.theme !== theme
+      || typeof settings.darkMode !== "boolean"
+      || typeof settings.muted !== "boolean"
+    );
+
+    return {
+      highScore,
+      coins: normalizedCoins,
+      ownedBallSkins: balls,
+      ownedThemes: themes,
+      darkMode: typeof settings.darkMode === "boolean" ? settings.darkMode : false,
+      muted: typeof settings.muted === "boolean" ? settings.muted : false,
+      ballSkin,
+      theme,
+      language: migratedLanguage,
+      needsMigration
+    };
+  }
+
+  function applyMigratedSave(migrated) {
+    best = migrated.highScore;
+    coins = migrated.coins;
+    ownedBallSkins = migrated.ownedBallSkins;
+    ownedThemes = migrated.ownedThemes;
+    darkMode = migrated.darkMode;
+    muted = migrated.muted;
+    selectedBallSkinId = migrated.ballSkin;
+    selectedThemeId = migrated.theme;
+    language = migrated.language;
+    ballEffects.selectedPreset = BALL_SKINS[selectedBallSkinId].effectPreset;
+  }
+
+  function readLocalSaveRecord() {
+    let rawData = null;
+    let parsed = null;
+    let invalidUnifiedSave = false;
     try {
-      localStorage.setItem(THEME_KEY, value);
+      rawData = localStorage.getItem(LOCAL_SAVE_KEY);
+      if (rawData && rawData.trim()) {
+        const candidate = JSON.parse(rawData);
+        if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) parsed = candidate;
+        else invalidUnifiedSave = true;
+      }
     } catch (error) {
-      // Theme selection can be unavailable in privacy modes.
+      invalidUnifiedSave = Boolean(rawData);
     }
+    if (parsed) return { save: parsed, shouldPersist: false };
+
+    let hasLegacyData = false;
+    try {
+      hasLegacyData = [STORAGE_KEY, DARK_MODE_KEY, MUTED_KEY, LANGUAGE_KEY, BALL_SKIN_KEY, THEME_KEY]
+        .some((key) => localStorage.getItem(key) !== null);
+    } catch (error) {
+      hasLegacyData = false;
+    }
+    if (!hasLegacyData) return { save: null, shouldPersist: invalidUnifiedSave };
+    return {
+      save: {
+        version: 3,
+        highScore: readBestScore(),
+        settings: {
+          language: readLanguagePreference(),
+          darkMode: readBooleanPreference(DARK_MODE_KEY, false),
+          muted: readBooleanPreference(MUTED_KEY, false),
+          ballSkin: readBallSkinPreference(),
+          theme: readThemePreference()
+        }
+      },
+      shouldPersist: true
+    };
+  }
+
+  function writeBooleanPreference(key, value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(key, String(value));
+      } catch (error) {
+        // Preferences can be unavailable in embedded/browser privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function writeLanguagePreference(value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(LANGUAGE_KEY, value);
+      } catch (error) {
+        // Language preferences can be unavailable in privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function writeBallSkinPreference(value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(BALL_SKIN_KEY, value);
+      } catch (error) {
+        // Ball selection can be unavailable in privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function writeThemePreference(value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(THEME_KEY, value);
+      } catch (error) {
+        // Theme selection can be unavailable in privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function makeSaveObject(forPlayables) {
+    const settings = {
+      darkMode: Boolean(darkMode),
+      muted: Boolean(muted),
+      ballSkin: ownedBallSkins.has(selectedBallSkinId) ? selectedBallSkinId : "classic",
+      theme: ownedThemes.has(selectedThemeId) ? selectedThemeId : "gym"
+    };
+    if (!forPlayables) settings.language = language;
+    return {
+      version: SAVE_VERSION,
+      highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
+      coins: normalizeCoins(coins),
+      ownedBallSkins: Object.keys(BALL_SKINS).filter((id) => ownedBallSkins.has(id)),
+      ownedThemes: Object.keys(THEMES).filter((id) => ownedThemes.has(id)),
+      settings
+    };
   }
 
   function makePlatformSaveData() {
-    return JSON.stringify({
-      version: 3,
-      highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
-      settings: {
-        language,
-        darkMode: Boolean(darkMode),
-        muted: Boolean(muted),
-        ballSkin: selectedBallSkinId,
-        theme: selectedThemeId
-      }
-    });
+    return JSON.stringify(makeSaveObject(isPlayablesEnv));
   }
 
-  function schedulePlatformSave() {
-    if (!isPlayablesEnv || !platformBootComplete || !playablesBridge) return;
+  function requestSave(immediate) {
+    if (!persistenceReady) return;
+    saveRevision += 1;
+    saveDirty = true;
+    if (immediate) {
+      if (cloudSaveTimer !== null) window.clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = null;
+      void drainSaveQueue();
+      return;
+    }
     if (cloudSaveTimer !== null) window.clearTimeout(cloudSaveTimer);
     cloudSaveTimer = window.setTimeout(() => {
       cloudSaveTimer = null;
-      playablesBridge.saveData(makePlatformSaveData());
+      void drainSaveQueue();
     }, 350);
   }
 
+  function schedulePlatformSave() {
+    requestSave(false);
+  }
+
+  async function persistSaveData(data) {
+    if (isPlayablesEnv) {
+      if (!platformBootComplete || !playablesBridge) return false;
+      return playablesBridge.saveData(data);
+    }
+    try {
+      localStorage.setItem(LOCAL_SAVE_KEY, data);
+      return true;
+    } catch (error) {
+      console.warn("[Hoop Flick] Local save failed; it will be retried later.", error);
+      return false;
+    }
+  }
+
+  async function drainSaveQueue() {
+    if (!persistenceReady || !saveDirty) return true;
+    if (saveInFlight) {
+      saveDrainQueued = true;
+      return false;
+    }
+    saveInFlight = true;
+    let succeeded = true;
+    try {
+      do {
+        saveDrainQueued = false;
+        const revision = saveRevision;
+        const data = makePlatformSaveData();
+        const saved = await persistSaveData(data);
+        if (!saved) {
+          succeeded = false;
+          break;
+        }
+        savedRevision = revision;
+        if (saveRevision === revision) saveDirty = false;
+      } while (saveDrainQueued || saveRevision > savedRevision);
+    } catch (error) {
+      succeeded = false;
+      console.warn("[Hoop Flick] Save failed; it will be retried later.", error);
+    } finally {
+      saveInFlight = false;
+    }
+    return succeeded;
+  }
+
   function flushPlatformSave() {
-    if (!isPlayablesEnv || !platformBootComplete || !playablesBridge) return;
+    if (!persistenceReady) return Promise.resolve(false);
     if (cloudSaveTimer !== null) {
       window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
     }
-    playablesBridge.saveData(makePlatformSaveData());
+    return drainSaveQueue();
   }
 
   function scheduleScoreSubmission(value) {
@@ -3378,35 +3624,20 @@
 
   function applyPlatformSave(rawData, platformLocale) {
     let save = null;
+    let invalidSave = false;
     if (typeof rawData === "string" && rawData.trim()) {
       try {
         const parsed = JSON.parse(rawData);
-        if (parsed && typeof parsed === "object") save = parsed;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) save = parsed;
+        else invalidSave = true;
       } catch (error) {
+        invalidSave = true;
         console.warn("[Hoop Flick] Invalid cloud save; defaults will be used.", error);
       }
     }
-
-    const savedScore = save && Number(save.highScore);
-    if (Number.isSafeInteger(savedScore) && savedScore >= 0) best = savedScore;
-
-    const settings = save && save.settings && typeof save.settings === "object"
-      ? save.settings
-      : save;
-    if (settings && typeof settings.darkMode === "boolean") darkMode = settings.darkMode;
-    if (settings && typeof settings.muted === "boolean") muted = settings.muted;
-    if (settings && typeof settings.ballSkin === "string") {
-      selectedBallSkinId = normalizeBallSkinId(settings.ballSkin);
-      ballEffects.selectedPreset = BALL_SKINS[selectedBallSkinId].effectPreset;
-    }
-    if (settings && THEMES[settings.theme]) {
-      selectedThemeId = settings.theme;
-    }
-    if (settings && (settings.language === "tr" || settings.language === "en")) {
-      language = settings.language;
-    } else if (typeof platformLocale === "string") {
-      language = platformLocale.toLowerCase().startsWith("tr") ? "tr" : "en";
-    }
+    const migrated = migrateSaveData(save, platformLocale, true);
+    applyMigratedSave(migrated);
+    return invalidSave || migrated.needsMigration;
   }
 
   function applyDarkMode() {
@@ -3428,6 +3659,9 @@
     }
     writeLanguagePreference(language);
     if (state === "gameover") finalScore.textContent = t("score") + " " + score;
+    clearEconomyStatus("ball");
+    clearEconomyStatus("theme");
+    syncEconomyBalances();
     renderBallCustomizer();
     renderThemeCustomizer();
     syncControlLabels();
@@ -3435,6 +3669,41 @@
 
   function getSelectedBallSkin() {
     return BALL_SKINS[selectedBallSkinId] || BALL_SKINS.classic;
+  }
+
+  function getCosmeticStateLabel(isSelected, isOwned, price) {
+    if (isSelected) return t("selectedSkin");
+    if (isOwned) return t("owned");
+    return t("locked") + " · " + price + " " + t("coins");
+  }
+
+  function syncEconomyBalances() {
+    const value = String(normalizeCoins(coins));
+    if (ballCoinBalanceValue) ballCoinBalanceValue.textContent = value;
+    if (themeCoinBalanceValue) themeCoinBalanceValue.textContent = value;
+    const label = t("coinBalance") + ": " + value;
+    if (ballCoinBalance) ballCoinBalance.setAttribute("aria-label", label);
+    if (themeCoinBalance) themeCoinBalance.setAttribute("aria-label", label);
+  }
+
+  function clearEconomyStatus(kind) {
+    const status = kind === "ball" ? ballEconomyStatus : themeEconomyStatus;
+    if (economyStatusTimers[kind] !== null) {
+      window.clearTimeout(economyStatusTimers[kind]);
+      economyStatusTimers[kind] = null;
+    }
+    if (status) status.textContent = "";
+  }
+
+  function showEconomyStatus(kind, message) {
+    const status = kind === "ball" ? ballEconomyStatus : themeEconomyStatus;
+    clearEconomyStatus(kind);
+    if (!status) return;
+    status.textContent = message;
+    economyStatusTimers[kind] = window.setTimeout(() => {
+      economyStatusTimers[kind] = null;
+      status.textContent = "";
+    }, 2200);
   }
 
   function createBallPreviewElement(sizeClass, skin) {
@@ -3470,6 +3739,7 @@
 
   function renderBallCustomizer() {
     if (!customizeBallPreview || !customizeBallName || !ballSkinList) return;
+    syncEconomyBalances();
     const selectedSkin = getSelectedBallSkin();
     customizeBallPreview.replaceChildren(createBallPreviewElement("large"));
     customizeBallName.textContent = t(selectedSkin.nameKey);
@@ -3478,23 +3748,27 @@
     for (const skin of Object.values(BALL_SKINS)) {
       const option = document.createElement("button");
       const isSelected = skin.id === selectedBallSkinId;
+      const isOwned = ownedBallSkins.has(skin.id);
+      const price = ECONOMY_PRICES.ball[skin.id] ?? 0;
+      const stateLabel = isSelected ? t("selectedSkin") : getCosmeticStateLabel(false, isOwned, price);
       option.type = "button";
-      option.className = "ballSkinOption";
+      option.className = "ballSkinOption" + (isOwned ? "" : " locked");
       option.setAttribute("role", "option");
       option.setAttribute("aria-selected", String(isSelected));
-      option.setAttribute("aria-label", t(skin.nameKey) + ", " + (isSelected ? t("selectedSkin") : t("selectSkin")));
+      option.setAttribute("aria-label", t(skin.nameKey) + ", " + stateLabel);
       option.appendChild(createBallPreviewElement("", skin));
 
       const copy = document.createElement("span");
       const name = document.createElement("strong");
       const description = document.createElement("small");
       name.textContent = t(skin.nameKey);
-      description.textContent = isSelected ? t("selectedSkin") : t("selectSkin");
+      description.textContent = stateLabel;
       copy.append(name, description);
       option.appendChild(copy);
 
       const check = document.createElement("span");
-      check.className = "ballSkinCheck";
+      check.className = "ballSkinCheck" + (isOwned ? "" : " locked");
+      check.setAttribute("aria-hidden", "true");
       check.textContent = isSelected ? "✓" : "";
       option.appendChild(check);
       option.addEventListener("click", () => selectBallSkin(skin.id));
@@ -3504,17 +3778,21 @@
 
   function renderThemeCustomizer() {
     if (!themeList) return;
+    syncEconomyBalances();
     themeList.replaceChildren();
 
     for (const theme of Object.values(THEMES)) {
       const option = document.createElement("button");
       const isSelected = theme.id === selectedThemeId;
+      const isOwned = ownedThemes.has(theme.id);
+      const price = ECONOMY_PRICES.theme[theme.id] ?? 0;
+      const stateLabel = isSelected ? t("selectedTheme") : getCosmeticStateLabel(false, isOwned, price);
       const colors = darkMode ? theme.colors.dark : theme.colors.light;
       option.type = "button";
-      option.className = "themeOption";
+      option.className = "themeOption" + (isOwned ? "" : " locked");
       option.setAttribute("role", "option");
       option.setAttribute("aria-selected", String(isSelected));
-      option.setAttribute("aria-label", t(theme.nameKey) + ", " + (isSelected ? t("selectedTheme") : t("chooseTheme")));
+      option.setAttribute("aria-label", t(theme.nameKey) + ", " + stateLabel);
       option.style.setProperty("--theme-bg-top", colors.backgroundTop);
       option.style.setProperty("--theme-bg-bottom", colors.backgroundBottom);
       option.style.setProperty("--theme-rim", colors.rim);
@@ -3528,11 +3806,12 @@
       const name = document.createElement("strong");
       const description = document.createElement("small");
       name.textContent = t(theme.nameKey);
-      description.textContent = isSelected ? t("selectedTheme") : t("chooseTheme");
+      description.textContent = stateLabel;
       copy.append(name, description);
 
       const check = document.createElement("span");
-      check.className = "ballSkinCheck";
+      check.className = "ballSkinCheck" + (isOwned ? "" : " locked");
+      check.setAttribute("aria-hidden", "true");
       check.textContent = isSelected ? "✓" : "";
       option.append(swatch, copy, check);
       option.addEventListener("click", () => selectTheme(theme.id));
@@ -3542,19 +3821,47 @@
 
   function selectBallSkin(skinId) {
     if (!BALL_SKINS[skinId] || platformPaused) return;
+    const price = ECONOMY_PRICES.ball[skinId] ?? 0;
+    const isOwned = ownedBallSkins.has(skinId);
+    if (!isOwned && coins < price) {
+      showEconomyStatus("ball", t("insufficientCoins") + " · " + price + " " + t("coins"));
+      ensureAudio();
+      playGameSound("button");
+      return;
+    }
+    if (!isOwned) {
+      coins -= price;
+      ownedBallSkins.add(skinId);
+    }
     selectedBallSkinId = skinId;
     ballEffects.selectedPreset = BALL_SKINS[skinId].effectPreset;
-    writeBallSkinPreference(skinId);
+    writeBallSkinPreference(skinId, !isOwned);
+    syncEconomyBalances();
     renderBallCustomizer();
+    if (!isOwned) showEconomyStatus("ball", t("purchased") + ": " + t(BALL_SKINS[skinId].nameKey));
     ensureAudio();
     playGameSound("button");
   }
 
   function selectTheme(themeId) {
     if (!THEMES[themeId] || platformPaused) return;
+    const price = ECONOMY_PRICES.theme[themeId] ?? 0;
+    const isOwned = ownedThemes.has(themeId);
+    if (!isOwned && coins < price) {
+      showEconomyStatus("theme", t("insufficientCoins") + " · " + price + " " + t("coins"));
+      ensureAudio();
+      playGameSound("button");
+      return;
+    }
+    if (!isOwned) {
+      coins -= price;
+      ownedThemes.add(themeId);
+    }
     selectedThemeId = themeId;
-    writeThemePreference(themeId);
+    writeThemePreference(themeId, !isOwned);
+    syncEconomyBalances();
     renderThemeCustomizer();
+    if (!isOwned) showEconomyStatus("theme", t("purchased") + ": " + t(THEMES[themeId].nameKey));
     draw();
     ensureAudio();
     playGameSound("button");
@@ -3845,13 +4152,23 @@
 
     isPlayablesEnv = Boolean(platformState.inPlayablesEnv);
     platformAudioEnabled = platformState.audioEnabled !== false;
-    if (isPlayablesEnv) applyPlatformSave(platformState.data, platformState.language);
+    let shouldPersistMigratedSave = false;
+    if (isPlayablesEnv) {
+      shouldPersistMigratedSave = applyPlatformSave(platformState.data, platformState.language);
+    } else {
+      const localRecord = readLocalSaveRecord();
+      const migrated = migrateSaveData(localRecord.save, null, true);
+      applyMigratedSave(migrated);
+      shouldPersistMigratedSave = localRecord.shouldPersist || migrated.needsMigration;
+    }
     applyLanguage();
     applyDarkMode();
     resetGame(true);
     platformBootComplete = true;
+    persistenceReady = true;
     platformReady = true;
     gameShell.inert = platformPaused;
+    if (shouldPersistMigratedSave) requestSave(true);
     if (playablesBridge) playablesBridge.gameReady();
     restartAnimationLoop();
   }

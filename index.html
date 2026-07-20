@@ -51,6 +51,12 @@
         <div id="customizeBallPreview" class="customizeBallPreview" aria-hidden="true"></div>
         <h3 id="customizeBallName">Klasik Turuncu</h3>
         <p data-i18n="ballCollectionHint">Yeni top stilleri için hazır koleksiyon.</p>
+        <div id="ballCoinBalance" class="economyBalance" role="status" aria-live="polite">
+          <span class="coinIcon" aria-hidden="true"></span>
+          <span data-i18n="coins">Coin</span>
+          <strong id="ballCoinBalanceValue">0</strong>
+        </div>
+        <p id="ballEconomyStatus" class="economyStatus" role="status" aria-live="polite"></p>
         <div id="ballSkinList" class="ballSkinList" role="listbox" data-i18n-aria-label="chooseBall"></div>
         <div class="menuActions">
           <button id="customizeBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
@@ -62,6 +68,12 @@
       <div class="panel menuPanel compact customizePanel themePanel">
         <span class="eyebrow" data-i18n="backgroundTheme">Arka Plan Teması</span>
         <h2 data-i18n="customizeTheme">Temayı Özelleştir</h2>
+        <div id="themeCoinBalance" class="economyBalance" role="status" aria-live="polite">
+          <span class="coinIcon" aria-hidden="true"></span>
+          <span data-i18n="coins">Coin</span>
+          <strong id="themeCoinBalanceValue">0</strong>
+        </div>
+        <p id="themeEconomyStatus" class="economyStatus" role="status" aria-live="polite"></p>
         <div id="themeList" class="themeList" role="listbox" data-i18n-aria-label="backgroundTheme"></div>
         <div class="menuActions">
           <button id="themeBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
@@ -118,7 +130,6 @@
   <script src="game.js?v=dev-20260626-4"></script>
 </body>
 </html>
-
 
 
 
