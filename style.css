@@ -144,6 +144,35 @@ body.dark-mode #gameShell {
   pointer-events: auto;
 }
 
+.coinHud {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  min-height: 32px;
+  padding: 5px 10px;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--hud-bg);
+  box-shadow: 0 8px 22px rgba(60, 68, 80, 0.08);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.coinHud .coinIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.coinHud strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
 .iconButton[aria-pressed="false"] {
   color: var(--muted);
   background: var(--hud-muted-bg);
@@ -777,6 +806,11 @@ p {
 
   .hudActions {
     gap: 6px;
+  }
+
+  .coinHud {
+    min-height: 30px;
+    padding: 4px 9px;
   }
 
   .customizeBallPreview {

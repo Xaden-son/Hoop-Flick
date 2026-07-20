@@ -44,6 +44,8 @@
   const scoreValue = document.getElementById("scoreValue");
   const bestValue = document.getElementById("bestValue");
   const finalScore = document.getElementById("finalScore");
+  const coinHud = document.getElementById("coinHud");
+  const coinHudValue = document.getElementById("coinHudValue");
 
   const STORAGE_KEY = "hoop-flick-best";
   const DARK_MODE_KEY = "hoop-flick-dark-mode";
@@ -91,6 +93,14 @@
   const SHOT_RING_DURATION = 0.3;
   const NEW_HIGH_SCORE_DURATION = 1.35;
   const NEW_HIGH_SCORE_CONFETTI_COUNT = 22;
+  const COIN_RADIUS = 9;
+  const COIN_LOCAL_Y = -32;
+  const COIN_INTERVAL_MIN = 4;
+  const COIN_INTERVAL_MAX = 7;
+  const COIN_FEEDBACK_DURATION = 0.72;
+  const COIN_COLLECT_PARTICLE_COUNT = 8;
+  const MAX_PARTICLES = 160;
+  const MAX_SHOT_RINGS = 12;
   const SPAWN_ATTEMPTS = 14;
   const MIN_HOOP_TILT = 2.5 * (Math.PI / 180);
   const MAX_HOOP_TILT = 7 * (Math.PI / 180);
@@ -185,10 +195,10 @@
     }),
     theme: Object.freeze({
       gym: 0,
-      sunset: 75,
-      neon: 125,
-      rooftop: 175,
-      minimal: 225
+      sunset: 100,
+      neon: 225,
+      rooftop: 75,
+      minimal: 125
     })
   });
 
@@ -1096,6 +1106,10 @@
   let drag = null;
   let particles = [];
   let shotRings = [];
+  let activeCoin = null;
+  let coinTargetsRemaining = COIN_INTERVAL_MIN;
+  let coinSpawnDue = false;
+  let coinFeedback = null;
   let hoops = [];
   let currentHoopId = 0;
   let targetHoopId = 1;
@@ -1190,6 +1204,7 @@
     transitionHistory.lastWasEdge = false;
     particles = [];
     shotRings = [];
+    resetCoinRun();
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
     }
@@ -1643,6 +1658,151 @@
     return hoop;
   }
 
+  function rollCoinInterval() {
+    return Math.floor(random(COIN_INTERVAL_MIN, COIN_INTERVAL_MAX + 1));
+  }
+
+  function resetCoinRun() {
+    activeCoin = null;
+    coinTargetsRemaining = rollCoinInterval();
+    coinSpawnDue = false;
+    coinFeedback = null;
+  }
+
+  function scheduleNextCoin() {
+    coinTargetsRemaining = rollCoinInterval();
+    coinSpawnDue = false;
+  }
+
+  function isCoinEligibleTarget(hoop) {
+    return Boolean(
+      hoop
+      && hoop.id > TUTORIAL_LAST_TARGET_ID
+      && !hoop.moving
+      && !hoop.board
+      && Math.abs(hoop.rotation) < 0.001
+    );
+  }
+
+  function spawnCoinForTarget(hoop) {
+    if (activeCoin || !isCoinEligibleTarget(hoop)) return false;
+    activeCoin = {
+      targetHoopId: hoop.id,
+      localX: 0,
+      localY: COIN_LOCAL_Y,
+      r: COIN_RADIUS
+    };
+    coinTargetsRemaining = 0;
+    coinSpawnDue = false;
+    return true;
+  }
+
+  function expireCoinForCompletedTarget(targetId) {
+    if (!activeCoin || activeCoin.targetHoopId !== targetId) return false;
+    activeCoin = null;
+    scheduleNextCoin();
+    return true;
+  }
+
+  function advanceCoinSchedule(completedTarget, nextTarget, intervalJustReset) {
+    if (intervalJustReset || activeCoin || !completedTarget || completedTarget.id <= TUTORIAL_LAST_TARGET_ID) return;
+    if (!coinSpawnDue) {
+      coinTargetsRemaining = Math.max(0, coinTargetsRemaining - 1);
+      if (coinTargetsRemaining === 0) coinSpawnDue = true;
+    }
+    if (coinSpawnDue) spawnCoinForTarget(nextTarget);
+  }
+
+  function getActiveCoinWorldPosition() {
+    if (!activeCoin) return null;
+    const target = getHoopById(activeCoin.targetHoopId);
+    if (!target) return null;
+    const position = hoopToWorld(target, activeCoin.localX, activeCoin.localY);
+    return { x: position.x, y: position.y, r: activeCoin.r };
+  }
+
+  function segmentIntersectsCircle(x1, y1, x2, y2, cx, cy, radius) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lengthSquared = dx * dx + dy * dy;
+    const ratio = lengthSquared > 0
+      ? clamp(((cx - x1) * dx + (cy - y1) * dy) / lengthSquared, 0, 1)
+      : 0;
+    const closestX = x1 + dx * ratio;
+    const closestY = y1 + dy * ratio;
+    const distanceX = closestX - cx;
+    const distanceY = closestY - cy;
+    return distanceX * distanceX + distanceY * distanceY <= radius * radius;
+  }
+
+  function detectActiveCoinCollection() {
+    if (!activeCoin || activeCoin.targetHoopId !== targetHoopId) return;
+    const position = getActiveCoinWorldPosition();
+    if (!position) return;
+    if (!segmentIntersectsCircle(
+      ball.prevX,
+      ball.prevY,
+      ball.x,
+      ball.y,
+      position.x,
+      position.y,
+      ball.r + position.r
+    )) return;
+    collectActiveCoin(position);
+  }
+
+  function collectActiveCoin(position) {
+    if (!activeCoin) return false;
+    activeCoin = null;
+    coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + 1);
+    scheduleNextCoin();
+    coinFeedback = {
+      x: position.x,
+      y: position.y,
+      life: COIN_FEEDBACK_DURATION,
+      maxLife: COIN_FEEDBACK_DURATION
+    };
+    emitCoinCollectEffect(position.x, position.y);
+    syncEconomyBalances();
+    schedulePlatformSave();
+    return true;
+  }
+
+  function emitCoinCollectEffect(x, y) {
+    const colors = ["#ffe48a", "#f6bd2f", "#d78b12"];
+    for (let i = 0; i < COIN_COLLECT_PARTICLE_COUNT; i += 1) {
+      const angle = (Math.PI * 2 * i) / COIN_COLLECT_PARTICLE_COUNT;
+      const speed = 42 + (i % 3) * 8;
+      pushParticle({
+        type: "coinSpark",
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 24,
+        gravity: 100,
+        life: 0.38,
+        maxLife: 0.38,
+        size: 2.8,
+        shrinkRate: 6,
+        color: colors[i % colors.length]
+      });
+    }
+  }
+
+  function pushParticle(particle) {
+    if (particles.length >= MAX_PARTICLES) {
+      particles.splice(0, particles.length - MAX_PARTICLES + 1);
+    }
+    particles.push(particle);
+  }
+
+  function pushShotRing(ring) {
+    if (shotRings.length >= MAX_SHOT_RINGS) {
+      shotRings.splice(0, shotRings.length - MAX_SHOT_RINGS + 1);
+    }
+    shotRings.push(ring);
+  }
+
   function commitTransitionHistory(plan) {
     transitionHistory.lastDifficulty = plan.difficulty;
     transitionHistory.hardStreak = plan.difficulty === "hard" ? transitionHistory.hardStreak + 1 : 0;
@@ -1851,6 +2011,10 @@
     updateHighScoreCelebration(dt);
     shake = Math.max(0, shake - dt * 26);
     comboText = Math.max(0, comboText - dt);
+    if (coinFeedback) {
+      coinFeedback.life -= dt;
+      if (coinFeedback.life <= 0) coinFeedback = null;
+    }
   }
 
   function updateAirborneBall(dt) {
@@ -1863,6 +2027,8 @@
     ball.vy *= Math.pow(AIR_DRAG, dt * 60);
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
+
+    detectActiveCoinCollection();
 
     if (ball.x - ball.r < WALL_INSET) {
       ball.x = WALL_INSET + ball.r;
@@ -1900,7 +2066,7 @@
     const directionX = pull.x / length;
     const directionY = pull.y / length;
     for (let i = 0; i < 3; i += 1) {
-      shotRings.push({
+      pushShotRing({
         x: ball.x - directionX * (5 + i * 7),
         y: ball.y - directionY * (5 + i * 7),
         vx: -directionX * (22 + i * 8),
@@ -2000,7 +2166,7 @@
       const trailDistance = random(ball.r * 0.5, ball.r * (1.4 + intensity * 0.5));
       const speed = random(28, 88) * intensity;
       const life = random((preset.perfectFlameLifetime || 0.34) * 0.72, preset.perfectFlameLifetime || 0.34);
-      particles.push({
+      pushParticle({
         type: "flame",
         shape: preset.perfectFlameShape || "flame",
         x: ball.x + backX * trailDistance + sideX * spread,
@@ -2230,9 +2396,11 @@
     hoop.baseY = hoop.y;
     currentHoopId = hoop.id;
     if (hoop.id === 1) hasReachedSecondHoop = true;
+    const coinIntervalReset = expireCoinForCompletedTarget(hoop.id);
     const nextTarget = nextHoop();
     targetHoopId = nextTarget.id;
     setHoopRoles(currentHoopId, targetHoopId);
+    advanceCoinSchedule(hoop, nextTarget, coinIntervalReset);
     beginBallSettle(hoop);
   }
 
@@ -2305,7 +2473,7 @@
     for (let i = 0; i < 9; i += 1) {
       const angle = -Math.PI * 0.5 + random(-1.25, 1.25);
       const speed = random(42, 118);
-      particles.push({
+      pushParticle({
         type: i % 3 === 0 ? "star" : "spark",
         x: hoop.x + random(-18, 18),
         y: hoop.y + random(-4, 15),
@@ -2325,7 +2493,7 @@
   function emitPerfectRings(hoop, colors, count) {
     const ringCount = count || 3;
     for (let i = 0; i < ringCount; i += 1) {
-      particles.push({
+      pushParticle({
         type: "ring",
         x: hoop.x,
         y: hoop.y + 4,
@@ -2346,7 +2514,7 @@
     for (let i = 0; i < 13; i += 1) {
       const angle = random(Math.PI * 1.02, Math.PI * 1.98);
       const speed = random(36, 128);
-      particles.push({
+      pushParticle({
         type: "splash",
         x: hoop.x + random(-18, 18),
         y: hoop.y + 12,
@@ -2367,7 +2535,7 @@
     emitPerfectRings(hoop, colors, 3);
     for (let i = 0; i < 8; i += 1) {
       const angle = (Math.PI * 2 * i) / 8;
-      particles.push({
+      pushParticle({
         type: "spark",
         x: hoop.x + Math.cos(angle) * 18,
         y: hoop.y + 5 + Math.sin(angle) * 7,
@@ -2436,7 +2604,7 @@
     for (let i = 0; i < 18; i += 1) {
       const a = (Math.PI * 2 * i) / 18 + random(-0.2, 0.2);
       const s = random(70, 190);
-      particles.push({
+      pushParticle({
         x,
         y,
         vx: Math.cos(a) * s,
@@ -2506,6 +2674,7 @@
     drawCurrentScore();
     for (const hoop of hoops) drawHoopMotionPath(hoop);
     for (const hoop of hoops) drawHoop(hoop);
+    drawActiveCoin();
     drawShotRings();
     drawParticles();
     if (drag && ball.held) drawTrajectory();
@@ -2516,9 +2685,56 @@
     }
     if (state === "menu") drawHint();
     if (comboText > 0) drawCombo();
+    drawCoinFeedback();
 
     ctx.restore();
     drawHighScoreCelebration();
+  }
+
+  function drawActiveCoin() {
+    const coin = getActiveCoinWorldPosition();
+    if (!coin) return;
+    ctx.save();
+    ctx.translate(coin.x, coin.y);
+    ctx.fillStyle = "rgba(38, 34, 24, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(1.5, 3, coin.r + 2, coin.r * 0.48, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f6bd2f";
+    ctx.strokeStyle = "#7a4c0b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(139, 82, 8, 0.72)";
+    ctx.lineWidth = 1.35;
+    ctx.beginPath();
+    ctx.arc(0, 0, coin.r * 0.57, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+    ctx.beginPath();
+    ctx.arc(-coin.r * 0.31, -coin.r * 0.34, coin.r * 0.17, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCoinFeedback() {
+    if (!coinFeedback) return;
+    const remaining = clamp(coinFeedback.life / coinFeedback.maxLife, 0, 1);
+    const progress = 1 - remaining;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, remaining * 2.4);
+    ctx.translate(coinFeedback.x, coinFeedback.y - 14 - progress * 22);
+    ctx.font = "700 18px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(88, 53, 8, 0.72)";
+    ctx.strokeText("+1", 0, 0);
+    ctx.fillStyle = "#ffe06a";
+    ctx.fillText("+1", 0, 0);
+    ctx.restore();
   }
 
   function drawAmbient() {
@@ -3679,9 +3895,11 @@
 
   function syncEconomyBalances() {
     const value = String(normalizeCoins(coins));
+    if (coinHudValue) coinHudValue.textContent = value;
     if (ballCoinBalanceValue) ballCoinBalanceValue.textContent = value;
     if (themeCoinBalanceValue) themeCoinBalanceValue.textContent = value;
     const label = t("coinBalance") + ": " + value;
+    if (coinHud) coinHud.setAttribute("aria-label", label);
     if (ballCoinBalance) ballCoinBalance.setAttribute("aria-label", label);
     if (themeCoinBalance) themeCoinBalance.setAttribute("aria-label", label);
   }
