@@ -144,6 +144,35 @@ body.dark-mode #gameShell {
   pointer-events: auto;
 }
 
+.coinHud {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  min-height: 32px;
+  padding: 5px 10px;
+  align-items: center;
+  justify-self: start;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--hud-bg);
+  box-shadow: 0 8px 22px rgba(60, 68, 80, 0.08);
+  backdrop-filter: blur(8px);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.coinHud .coinIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.coinHud strong {
+  color: var(--ink);
+  font-size: 15px;
+}
+
 .iconButton[aria-pressed="false"] {
   color: var(--muted);
   background: var(--hud-muted-bg);
@@ -197,6 +226,41 @@ body.dark-mode #gameShell {
 
 .retryOverlay {
   background: rgba(38, 48, 68, 0.08);
+}
+
+.reviveOfferOverlay {
+  background: rgba(25, 32, 44, 0.32);
+  backdrop-filter: blur(5px);
+}
+
+.reviveOfferPanel {
+  width: min(340px, 88vw);
+}
+
+.reviveOfferPanel h2 {
+  margin-top: 8px;
+  font-size: 34px;
+}
+
+.reviveOfferPanel > p {
+  font-size: 14px;
+}
+
+.reviveCountdown {
+  display: flex;
+  min-height: 32px;
+  padding: 6px 10px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--secondary-bg);
+}
+
+.reviveCountdown strong {
+  min-width: 30px;
+  color: var(--ink);
 }
 
 .pauseOverlay {
@@ -254,6 +318,85 @@ body.dark-mode #gameShell {
   margin: 12px 0 0;
   color: var(--ink);
   font-size: 20px;
+}
+
+.economyBalance {
+  display: inline-flex;
+  min-height: 34px;
+  margin-top: 14px;
+  padding: 6px 11px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--secondary-bg);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.economyBalance strong {
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.coinIcon {
+  position: relative;
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  border: 2px solid #8a5a08;
+  border-radius: 50%;
+  background: #f4b928;
+  box-shadow: inset 0 0 0 2px #ffd968;
+}
+
+.coinIcon::after {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  width: 4px;
+  height: 2px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.78);
+  content: "";
+  transform: rotate(-28deg);
+}
+
+.economyStatus {
+  min-height: 18px;
+  margin-top: 6px;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.rewardedCoinButton {
+  display: inline-flex;
+  min-height: 44px;
+  margin-top: 2px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.rewardedCoinButton:disabled,
+.reviveOfferPanel button:disabled {
+  cursor: default;
+  opacity: 0.58;
+  transform: none;
+}
+
+.rewardedCoinButton[aria-busy="true"],
+.reviveOfferPanel button[aria-busy="true"] {
+  opacity: 0.72;
+}
+
+.rewardedStatus {
+  min-height: 18px;
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .customizeSectionTitle {
@@ -439,6 +582,11 @@ body.dark-mode #gameShell {
   box-shadow: inset 0 0 0 2px rgba(244, 123, 32, 0.16);
 }
 
+.ballSkinOption.locked,
+.themeOption.locked {
+  background: var(--hud-muted-bg);
+}
+
 .themeOption {
   --theme-bg-top: #fff8ed;
   --theme-bg-bottom: #f7efe1;
@@ -505,16 +653,42 @@ body.dark-mode #gameShell {
   display: block;
 }
 
-.ballSkinOption small {
+.ballSkinOption small,
+.themeOption small {
   margin-top: 3px;
   color: var(--muted);
   font-weight: 650;
 }
 
 .ballSkinCheck {
+  position: relative;
+  display: grid;
+  width: 24px;
+  min-height: 24px;
+  place-items: center;
   color: var(--accent);
   font-size: 20px;
   font-weight: 900;
+}
+
+.ballSkinCheck.locked::before {
+  width: 12px;
+  height: 10px;
+  margin-top: 5px;
+  border: 2px solid var(--muted);
+  border-radius: 3px;
+  content: "";
+}
+
+.ballSkinCheck.locked::after {
+  position: absolute;
+  top: 1px;
+  width: 8px;
+  height: 9px;
+  border: 2px solid var(--muted);
+  border-bottom: 0;
+  border-radius: 7px 7px 0 0;
+  content: "";
 }
 
 .eyebrow {
@@ -643,6 +817,18 @@ p {
     font-size: 18px;
   }
 
+  .economyBalance {
+    min-height: 30px;
+    margin-top: 10px;
+    padding: 4px 9px;
+  }
+
+  .economyStatus {
+    min-height: 16px;
+    margin-top: 4px;
+    font-size: 11px;
+  }
+
   p {
     margin-top: 8px;
     font-size: 15px;
@@ -685,6 +871,11 @@ p {
     gap: 6px;
   }
 
+  .coinHud {
+    min-height: 30px;
+    padding: 4px 9px;
+  }
+
   .customizeBallPreview {
     min-height: 78px;
     margin-top: 10px;
@@ -697,15 +888,15 @@ p {
 
   .ballSkinList {
     gap: 8px;
-    max-height: min(34dvh, 220px);
-    margin-top: 12px;
+    max-height: min(32dvh, 210px);
+    margin-top: 8px;
   }
 
   .themePanel .themeList,
   .themeList {
     gap: 8px;
-    max-height: min(46dvh, 300px);
-    margin-top: 12px;
+    max-height: min(42dvh, 280px);
+    margin-top: 8px;
   }
 
   .ballSkinOption {
@@ -744,12 +935,12 @@ p {
   }
 
   .ballSkinList {
-    max-height: min(30dvh, 200px);
-    margin-top: 10px;
+    max-height: min(28dvh, 190px);
+    margin-top: 8px;
   }
 
   .themePanel .themeList {
-    max-height: min(44dvh, 280px);
+    max-height: min(40dvh, 260px);
   }
 
   .menuActions {

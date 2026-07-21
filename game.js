@@ -29,6 +29,14 @@
   const customizeBallName = document.getElementById("customizeBallName");
   const ballSkinList = document.getElementById("ballSkinList");
   const themeList = document.getElementById("themeList");
+  const ballCoinBalance = document.getElementById("ballCoinBalance");
+  const ballCoinBalanceValue = document.getElementById("ballCoinBalanceValue");
+  const ballEconomyStatus = document.getElementById("ballEconomyStatus");
+  const ballRewardedCoinButton = document.getElementById("ballRewardedCoinButton");
+  const themeCoinBalance = document.getElementById("themeCoinBalance");
+  const themeCoinBalanceValue = document.getElementById("themeCoinBalanceValue");
+  const themeEconomyStatus = document.getElementById("themeEconomyStatus");
+  const themeRewardedCoinButton = document.getElementById("themeRewardedCoinButton");
   const restartButton = document.getElementById("restartButton");
   const gameOverMenuButton = document.getElementById("gameOverMenuButton");
   const retryButton = document.getElementById("retryButton");
@@ -38,6 +46,13 @@
   const scoreValue = document.getElementById("scoreValue");
   const bestValue = document.getElementById("bestValue");
   const finalScore = document.getElementById("finalScore");
+  const coinHud = document.getElementById("coinHud");
+  const coinHudValue = document.getElementById("coinHudValue");
+  const reviveOfferOverlay = document.getElementById("reviveOfferOverlay");
+  const reviveOfferCountdown = document.getElementById("reviveOfferCountdown");
+  const reviveOfferStatus = document.getElementById("reviveOfferStatus");
+  const reviveRewardButton = document.getElementById("reviveRewardButton");
+  const reviveFinishButton = document.getElementById("reviveFinishButton");
 
   const STORAGE_KEY = "hoop-flick-best";
   const DARK_MODE_KEY = "hoop-flick-dark-mode";
@@ -45,6 +60,8 @@
   const LANGUAGE_KEY = "hoop-flick-language";
   const BALL_SKIN_KEY = "hoop-flick-ball-skin";
   const THEME_KEY = "hoop-flick-theme";
+  const LOCAL_SAVE_KEY = "hoop-flick-save-v4";
+  const SAVE_VERSION = 4;
   const WORLD_W = 420;
   const WORLD_H = 746;
   const START_HOOP_BOTTOM_OFFSET = 183;
@@ -83,13 +100,22 @@
   const SHOT_RING_DURATION = 0.3;
   const NEW_HIGH_SCORE_DURATION = 1.35;
   const NEW_HIGH_SCORE_CONFETTI_COUNT = 22;
+  const COIN_RADIUS = 9;
+  const COIN_LOCAL_Y = -32;
+  const COIN_INTERVAL_MIN = 4;
+  const COIN_INTERVAL_MAX = 7;
+  const COIN_FEEDBACK_DURATION = 0.72;
+  const COIN_COLLECT_PARTICLE_COUNT = 8;
+  const MAX_PARTICLES = 160;
+  const MAX_SHOT_RINGS = 12;
+  const COIN_REWARD_ID = "hoop-flick-coins-25-v1";
+  const CONTINUE_REWARD_ID = "hoop-flick-continue-once-v1";
+  const REWARDED_COIN_AMOUNT = 25;
+  const REVIVE_OFFER_DURATION = 6;
   const SPAWN_ATTEMPTS = 14;
   const MIN_HOOP_TILT = 2.5 * (Math.PI / 180);
   const MAX_HOOP_TILT = 7 * (Math.PI / 180);
 
-  // MANUAL GAMEPLAY VARIETY TUNING
-  // Keep disabled in production. When enabled, one summary is logged per spawned transition.
-  const DEBUG_GAMEPLAY_VARIETY = false;
   const TUTORIAL_LAST_TARGET_ID = 4;
   const VARIETY_CHANCE_FULL_SCORE = 50;
   const MAX_HARD_TRANSITION_STREAK = 1;
@@ -157,6 +183,32 @@
       maxY: MAX_HOOP_VERTICAL_GAP
     }
   };
+
+  const ECONOMY_PRICES = Object.freeze({
+    ball: Object.freeze({
+      classic: 0,
+      inverted: 20,
+      neon: 30,
+      watermelon: 40,
+      magma: 50,
+      gold: 60,
+      ghost: 75,
+      toxic: 90,
+      matrix: 110,
+      earth: 130,
+      cyberpunk: 150,
+      bloodMoon: 175,
+      zebra: 200,
+      sun: 225
+    }),
+    theme: Object.freeze({
+      gym: 0,
+      sunset: 100,
+      neon: 225,
+      rooftop: 75,
+      minimal: 125
+    })
+  });
 
   const BALL_EFFECT_PRESETS = {
     classic: {
@@ -873,6 +925,17 @@
       chooseBall: "Topunu Seç",
       ballCollectionHint: "Yeni top stilleri için hazır koleksiyon.",
       backgroundTheme: "Arka Plan Teması",
+      coins: "Coin",
+      coinBalance: "Coin bakiyesi",
+      locked: "Kilitli",
+      owned: "Sahip",
+      insufficientCoins: "Yetersiz coin",
+      purchased: "Satın alındı",
+      watchAdCoins: "Reklam İzle · +25 Coin",
+      rewardedUnavailable: "Reklam şu anda kullanılamıyor",
+      rewardedPending: "Reklam açılıyor…",
+      rewardedCoinsGranted: "+25 coin kazandın",
+      rewardedNotEarned: "Ödül alınamadı",
       chooseTheme: "Tema seç",
       selectedTheme: "Seçili tema",
       themeGym: "Klasik",
@@ -899,6 +962,12 @@
       comingSoon: "Yakında",
       comingSoonText: "Yeni toplar ve efektler sonraki güncellemede burada olacak.",
       gameOver: "Oyun Bitti",
+      lastChance: "SON ŞANS",
+      continueRun: "Oyuna Devam Et",
+      continueRunHint: "Reklam izleyerek bu run'a kaldığın yerden devam et.",
+      decisionTime: "Karar süresi",
+      watchAdContinue: "Reklam İzle ve Devam Et",
+      finishRun: "Bitir",
       restart: "Yeniden Başlat",
       mainMenu: "Ana Menü",
       returnMainMenu: "Ana Menüye Dön",
@@ -939,6 +1008,17 @@
       chooseBall: "Choose Your Ball",
       ballCollectionHint: "A collection ready for future ball styles.",
       backgroundTheme: "Background Theme",
+      coins: "Coins",
+      coinBalance: "Coin balance",
+      locked: "Locked",
+      owned: "Owned",
+      insufficientCoins: "Not enough coins",
+      purchased: "Purchased",
+      watchAdCoins: "Watch Ad · +25 Coins",
+      rewardedUnavailable: "Ad currently unavailable",
+      rewardedPending: "Opening ad…",
+      rewardedCoinsGranted: "+25 coins earned",
+      rewardedNotEarned: "Reward not earned",
       chooseTheme: "Choose theme",
       selectedTheme: "Selected theme",
       themeGym: "Classic",
@@ -965,6 +1045,12 @@
       comingSoon: "Coming Soon",
       comingSoonText: "New balls and effects will arrive here in a future update.",
       gameOver: "Game Over",
+      lastChance: "LAST CHANCE",
+      continueRun: "Continue Your Run",
+      continueRunHint: "Watch an ad to continue this run from where you left off.",
+      decisionTime: "Decision time",
+      watchAdContinue: "Watch Ad and Continue",
+      finishRun: "Finish",
       restart: "Restart",
       mainMenu: "Main Menu",
       returnMainMenu: "Return to Main Menu",
@@ -1018,6 +1104,12 @@
   let animationFrameId = null;
   let animationLoopGeneration = 0;
   let cloudSaveTimer = null;
+  let persistenceReady = false;
+  let saveDirty = false;
+  let saveRevision = 0;
+  let savedRevision = 0;
+  let saveInFlight = false;
+  let saveDrainQueued = false;
   let scoreSubmitTimer = null;
   let pendingHighScore = null;
   let settingsOrigin = "menu";
@@ -1044,6 +1136,16 @@
   let drag = null;
   let particles = [];
   let shotRings = [];
+  let activeCoin = null;
+  let coinTargetsRemaining = COIN_INTERVAL_MIN;
+  let coinSpawnDue = false;
+  let coinFeedback = null;
+  let rewardedRequest = null;
+  let rewardedRequestSequence = 0;
+  let reviveUsed = false;
+  let gameOverFinalized = false;
+  let reviveOfferRemaining = 0;
+  let reviveOfferActive = false;
   let hoops = [];
   let currentHoopId = 0;
   let targetHoopId = 1;
@@ -1065,6 +1167,10 @@
   };
   let selectedBallSkinId = readBallSkinPreference();
   let selectedThemeId = readThemePreference();
+  let coins = 0;
+  let ownedBallSkins = new Set(["classic"]);
+  let ownedThemes = new Set(["gym"]);
+  const economyStatusTimers = { ball: null, theme: null };
   const ballEffects = {
     selectedPreset: BALL_SKINS[selectedBallSkinId]?.effectPreset || "classic",
     trailCooldown: 0
@@ -1134,6 +1240,12 @@
     transitionHistory.lastWasEdge = false;
     particles = [];
     shotRings = [];
+    resetCoinRun();
+    reviveUsed = false;
+    gameOverFinalized = false;
+    reviveOfferRemaining = 0;
+    reviveOfferActive = false;
+    if (reviveOfferStatus) reviveOfferStatus.textContent = "";
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
     }
@@ -1156,10 +1268,12 @@
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
     pauseOverlay.classList.remove("active");
+    reviveOfferOverlay?.classList.remove("active");
     gameOverOverlay.classList.remove("active");
     retryOverlay.classList.remove("active");
     retryButton.blur();
     syncUiState();
+    syncRewardedUi();
   }
 
   function makeStartHoop() {
@@ -1242,13 +1356,49 @@
   }
 
   function startGame() {
-    if (!platformReady || platformPaused) return;
+    if (!platformReady || platformPaused || rewardedRequest) return;
     ensureAudio();
     resetGame(false);
     playGameSound("start");
   }
 
-  function gameOver() {
+  function beginGameOver() {
+    if (gameOverFinalized || state === "revive-offer") return false;
+    airborneTime = 0;
+    ball.angularVelocity = 0;
+    drag = null;
+    if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
+      canvas.releasePointerCapture(activePointer);
+    }
+    activePointer = null;
+    if (score > 0 && !reviveUsed && !rewardedRequest && hasRewardedCapability()) {
+      return beginReviveOffer();
+    }
+    return finalizeGameOver();
+  }
+
+  function beginReviveOffer() {
+    if (score <= 0 || gameOverFinalized || reviveUsed || rewardedRequest || !hasRewardedCapability()) {
+      return finalizeGameOver();
+    }
+    state = "revive-offer";
+    reviveOfferActive = true;
+    reviveOfferRemaining = REVIVE_OFFER_DURATION;
+    if (reviveOfferCountdown) reviveOfferCountdown.textContent = reviveOfferRemaining.toFixed(1);
+    if (reviveOfferStatus) reviveOfferStatus.textContent = "";
+    retryOverlay.classList.remove("active");
+    gameOverOverlay.classList.remove("active");
+    reviveOfferOverlay?.classList.add("active");
+    syncUiState();
+    syncRewardedUi();
+    return true;
+  }
+
+  function finalizeGameOver() {
+    if (gameOverFinalized) return false;
+    gameOverFinalized = true;
+    reviveOfferActive = false;
+    reviveOfferRemaining = 0;
     state = "gameover";
     airborneTime = 0;
     ball.angularVelocity = 0;
@@ -1256,11 +1406,55 @@
     best = Math.max(best, score);
     writeBestScore(best, best > previousBest);
     flushScoreSubmission();
+    void flushPlatformSave();
     bestValue.textContent = String(best);
     finalScore.textContent = t("score") + " " + score;
+    reviveOfferOverlay?.classList.remove("active");
     retryOverlay.classList.remove("active");
     gameOverOverlay.classList.add("active");
+    syncUiState();
+    syncRewardedUi();
     playGameSound("gameover");
+    return true;
+  }
+
+  function resumeFromRewardedContinue(restartLoop) {
+    if (gameOverFinalized || reviveUsed || state !== "revive-offer") return false;
+    const currentHoop = getHoopById(currentHoopId);
+    if (!currentHoop) return finalizeGameOver();
+    reviveUsed = true;
+    reviveOfferActive = false;
+    reviveOfferRemaining = 0;
+    swishStreak = 0;
+    perfectChain = 0;
+    comboText = 0;
+    lastScoreGain = 1;
+    scoreFeedbackText = t("nice") + " +1";
+    lastWasPerfect = false;
+    lastWasBounce = false;
+    shake = 0;
+    particles = [];
+    shotRings = [];
+    coinFeedback = null;
+    highScoreCelebration.elapsed = 0;
+    highScoreCelebration.active = false;
+    highScoreCelebration.confetti = [];
+    drag = null;
+    if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
+      canvas.releasePointerCapture(activePointer);
+    }
+    activePointer = null;
+    placeBallInHoop(currentHoop);
+    ball.scoredHoopId = currentHoopId;
+    setHoopRoles(currentHoopId, targetHoopId);
+    state = "playing";
+    reviveOfferOverlay?.classList.remove("active");
+    retryOverlay.classList.remove("active");
+    gameOverOverlay.classList.remove("active");
+    syncUiState();
+    syncRewardedUi();
+    if (restartLoop !== false && !platformPaused) restartAnimationLoop();
+    return true;
   }
 
   function recoverFirstTransition() {
@@ -1581,10 +1775,154 @@
     }
 
     commitTransitionHistory(transitionPlan);
-    debugGameplayTransition(transitionPlan, last, hoop);
     hoops.push(hoop);
     if (hoops.length > 5) hoops.shift();
     return hoop;
+  }
+
+  function rollCoinInterval() {
+    return Math.floor(random(COIN_INTERVAL_MIN, COIN_INTERVAL_MAX + 1));
+  }
+
+  function resetCoinRun() {
+    activeCoin = null;
+    coinTargetsRemaining = rollCoinInterval();
+    coinSpawnDue = false;
+    coinFeedback = null;
+  }
+
+  function scheduleNextCoin() {
+    coinTargetsRemaining = rollCoinInterval();
+    coinSpawnDue = false;
+  }
+
+  function isCoinEligibleTarget(hoop) {
+    return Boolean(
+      hoop
+      && hoop.id > TUTORIAL_LAST_TARGET_ID
+      && !hoop.moving
+      && !hoop.board
+      && Math.abs(hoop.rotation) < 0.001
+    );
+  }
+
+  function spawnCoinForTarget(hoop) {
+    if (activeCoin || !isCoinEligibleTarget(hoop)) return false;
+    activeCoin = {
+      targetHoopId: hoop.id,
+      localX: 0,
+      localY: COIN_LOCAL_Y,
+      r: COIN_RADIUS
+    };
+    coinTargetsRemaining = 0;
+    coinSpawnDue = false;
+    return true;
+  }
+
+  function expireCoinForCompletedTarget(targetId) {
+    if (!activeCoin || activeCoin.targetHoopId !== targetId) return false;
+    activeCoin = null;
+    scheduleNextCoin();
+    return true;
+  }
+
+  function advanceCoinSchedule(completedTarget, nextTarget, intervalJustReset) {
+    if (intervalJustReset || activeCoin || !completedTarget || completedTarget.id <= TUTORIAL_LAST_TARGET_ID) return;
+    if (!coinSpawnDue) {
+      coinTargetsRemaining = Math.max(0, coinTargetsRemaining - 1);
+      if (coinTargetsRemaining === 0) coinSpawnDue = true;
+    }
+    if (coinSpawnDue) spawnCoinForTarget(nextTarget);
+  }
+
+  function getActiveCoinWorldPosition() {
+    if (!activeCoin) return null;
+    const target = getHoopById(activeCoin.targetHoopId);
+    if (!target) return null;
+    const position = hoopToWorld(target, activeCoin.localX, activeCoin.localY);
+    return { x: position.x, y: position.y, r: activeCoin.r };
+  }
+
+  function segmentIntersectsCircle(x1, y1, x2, y2, cx, cy, radius) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lengthSquared = dx * dx + dy * dy;
+    const ratio = lengthSquared > 0
+      ? clamp(((cx - x1) * dx + (cy - y1) * dy) / lengthSquared, 0, 1)
+      : 0;
+    const closestX = x1 + dx * ratio;
+    const closestY = y1 + dy * ratio;
+    const distanceX = closestX - cx;
+    const distanceY = closestY - cy;
+    return distanceX * distanceX + distanceY * distanceY <= radius * radius;
+  }
+
+  function detectActiveCoinCollection() {
+    if (!activeCoin || activeCoin.targetHoopId !== targetHoopId) return;
+    const position = getActiveCoinWorldPosition();
+    if (!position) return;
+    if (!segmentIntersectsCircle(
+      ball.prevX,
+      ball.prevY,
+      ball.x,
+      ball.y,
+      position.x,
+      position.y,
+      ball.r + position.r
+    )) return;
+    collectActiveCoin(position);
+  }
+
+  function collectActiveCoin(position) {
+    if (!activeCoin) return false;
+    activeCoin = null;
+    coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + 1);
+    scheduleNextCoin();
+    coinFeedback = {
+      x: position.x,
+      y: position.y,
+      life: COIN_FEEDBACK_DURATION,
+      maxLife: COIN_FEEDBACK_DURATION
+    };
+    emitCoinCollectEffect(position.x, position.y);
+    syncEconomyBalances();
+    schedulePlatformSave();
+    return true;
+  }
+
+  function emitCoinCollectEffect(x, y) {
+    const colors = ["#ffe48a", "#f6bd2f", "#d78b12"];
+    for (let i = 0; i < COIN_COLLECT_PARTICLE_COUNT; i += 1) {
+      const angle = (Math.PI * 2 * i) / COIN_COLLECT_PARTICLE_COUNT;
+      const speed = 42 + (i % 3) * 8;
+      pushParticle({
+        type: "coinSpark",
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 24,
+        gravity: 100,
+        life: 0.38,
+        maxLife: 0.38,
+        size: 2.8,
+        shrinkRate: 6,
+        color: colors[i % colors.length]
+      });
+    }
+  }
+
+  function pushParticle(particle) {
+    if (particles.length >= MAX_PARTICLES) {
+      particles.splice(0, particles.length - MAX_PARTICLES + 1);
+    }
+    particles.push(particle);
+  }
+
+  function pushShotRing(ring) {
+    if (shotRings.length >= MAX_SHOT_RINGS) {
+      shotRings.splice(0, shotRings.length - MAX_SHOT_RINGS + 1);
+    }
+    shotRings.push(ring);
   }
 
   function commitTransitionHistory(plan) {
@@ -1593,21 +1931,6 @@
     transitionHistory.lastWasLongShot = LONG_SHOT_COOLDOWN_TRANSITIONS > 0 && plan.longShot;
     transitionHistory.lastWasNear = plan.geometryName === "normalNear";
     transitionHistory.lastWasEdge = EDGE_TRANSITION_COOLDOWN > 0 && plan.edge;
-  }
-
-  function debugGameplayTransition(plan, source, target) {
-    if (!DEBUG_GAMEPLAY_VARIETY) return;
-    console.debug("[Hoop Flick] Gameplay transition", {
-      tier: plan.tier,
-      difficulty: plan.difficulty,
-      horizontalGap: Number(Math.abs(target.x - source.x).toFixed(1)),
-      verticalGap: Number((source.y - target.y).toFixed(1)),
-      geometry: plan.geometryName,
-      longShot: plan.longShot,
-      edge: plan.edge,
-      challengeBudget: plan.budget,
-      fallback: plan.fallback
-    });
   }
 
   function isFairSpawn(source, target, plan) {
@@ -1663,7 +1986,7 @@
   }
 
   function onPointerDown(event) {
-    if (!platformReady || platformPaused || userPaused || state !== "playing" || activePointer !== null) return;
+    if (!platformReady || platformPaused || userPaused || rewardedRequest || state !== "playing" || activePointer !== null) return;
     const settleCanBeSkipped = ball.settle && ball.settle.elapsed >= BALL_SETTLE_INPUT_DELAY;
     if (!ball.held && !settleCanBeSkipped) return;
     const p = screenToWorld(event.clientX, event.clientY);
@@ -1734,6 +2057,12 @@
   }
 
   function update(dt) {
+    if (state === "revive-offer") {
+      updateReviveOffer(dt);
+      return;
+    }
+    if (rewardedRequest) return;
+
     for (const hoop of hoops) {
       hoop.entranceTimer = Math.min(1, (hoop.entranceTimer ?? hoop.spawnProgress ?? 1) + dt / HOOP_SPAWN_DURATION);
       hoop.spawnProgress = hoop.entranceTimer;
@@ -1766,6 +2095,8 @@
         updateAirborneBall(dt);
       }
 
+      if (state === "revive-offer") return;
+
       const targetHoop = getHoopById(targetHoopId) || hoops[hoops.length - 1];
       const leadY = ball.held || ball.settle
         ? ball.y - WORLD_H * 0.62
@@ -1795,6 +2126,10 @@
     updateHighScoreCelebration(dt);
     shake = Math.max(0, shake - dt * 26);
     comboText = Math.max(0, comboText - dt);
+    if (coinFeedback) {
+      coinFeedback.life -= dt;
+      if (coinFeedback.life <= 0) coinFeedback = null;
+    }
   }
 
   function updateAirborneBall(dt) {
@@ -1807,6 +2142,8 @@
     ball.vy *= Math.pow(AIR_DRAG, dt * 60);
     ball.x += ball.vx * dt;
     ball.y += ball.vy * dt;
+
+    detectActiveCoinCollection();
 
     if (ball.x - ball.r < WALL_INSET) {
       ball.x = WALL_INSET + ball.r;
@@ -1824,7 +2161,7 @@
 
     if (!ball.settle && ball.y - cameraY > WORLD_H + 90) {
       if (!hasReachedSecondHoop && currentHoopId === 0) recoverFirstTransition();
-      else gameOver();
+      else beginGameOver();
     } else if (!ball.settle && !ball.held && airborneTime >= AIRBORNE_RETRY_DELAY) {
       showRetry();
     }
@@ -1844,7 +2181,7 @@
     const directionX = pull.x / length;
     const directionY = pull.y / length;
     for (let i = 0; i < 3; i += 1) {
-      shotRings.push({
+      pushShotRing({
         x: ball.x - directionX * (5 + i * 7),
         y: ball.y - directionY * (5 + i * 7),
         vx: -directionX * (22 + i * 8),
@@ -1944,7 +2281,7 @@
       const trailDistance = random(ball.r * 0.5, ball.r * (1.4 + intensity * 0.5));
       const speed = random(28, 88) * intensity;
       const life = random((preset.perfectFlameLifetime || 0.34) * 0.72, preset.perfectFlameLifetime || 0.34);
-      particles.push({
+      pushParticle({
         type: "flame",
         shape: preset.perfectFlameShape || "flame",
         x: ball.x + backX * trailDistance + sideX * spread,
@@ -2174,9 +2511,11 @@
     hoop.baseY = hoop.y;
     currentHoopId = hoop.id;
     if (hoop.id === 1) hasReachedSecondHoop = true;
+    const coinIntervalReset = expireCoinForCompletedTarget(hoop.id);
     const nextTarget = nextHoop();
     targetHoopId = nextTarget.id;
     setHoopRoles(currentHoopId, targetHoopId);
+    advanceCoinSchedule(hoop, nextTarget, coinIntervalReset);
     beginBallSettle(hoop);
   }
 
@@ -2249,7 +2588,7 @@
     for (let i = 0; i < 9; i += 1) {
       const angle = -Math.PI * 0.5 + random(-1.25, 1.25);
       const speed = random(42, 118);
-      particles.push({
+      pushParticle({
         type: i % 3 === 0 ? "star" : "spark",
         x: hoop.x + random(-18, 18),
         y: hoop.y + random(-4, 15),
@@ -2269,7 +2608,7 @@
   function emitPerfectRings(hoop, colors, count) {
     const ringCount = count || 3;
     for (let i = 0; i < ringCount; i += 1) {
-      particles.push({
+      pushParticle({
         type: "ring",
         x: hoop.x,
         y: hoop.y + 4,
@@ -2290,7 +2629,7 @@
     for (let i = 0; i < 13; i += 1) {
       const angle = random(Math.PI * 1.02, Math.PI * 1.98);
       const speed = random(36, 128);
-      particles.push({
+      pushParticle({
         type: "splash",
         x: hoop.x + random(-18, 18),
         y: hoop.y + 12,
@@ -2311,7 +2650,7 @@
     emitPerfectRings(hoop, colors, 3);
     for (let i = 0; i < 8; i += 1) {
       const angle = (Math.PI * 2 * i) / 8;
-      particles.push({
+      pushParticle({
         type: "spark",
         x: hoop.x + Math.cos(angle) * 18,
         y: hoop.y + 5 + Math.sin(angle) * 7,
@@ -2380,7 +2719,7 @@
     for (let i = 0; i < 18; i += 1) {
       const a = (Math.PI * 2 * i) / 18 + random(-0.2, 0.2);
       const s = random(70, 190);
-      particles.push({
+      pushParticle({
         x,
         y,
         vx: Math.cos(a) * s,
@@ -2450,6 +2789,7 @@
     drawCurrentScore();
     for (const hoop of hoops) drawHoopMotionPath(hoop);
     for (const hoop of hoops) drawHoop(hoop);
+    drawActiveCoin();
     drawShotRings();
     drawParticles();
     if (drag && ball.held) drawTrajectory();
@@ -2460,9 +2800,56 @@
     }
     if (state === "menu") drawHint();
     if (comboText > 0) drawCombo();
+    drawCoinFeedback();
 
     ctx.restore();
     drawHighScoreCelebration();
+  }
+
+  function drawActiveCoin() {
+    const coin = getActiveCoinWorldPosition();
+    if (!coin) return;
+    ctx.save();
+    ctx.translate(coin.x, coin.y);
+    ctx.fillStyle = "rgba(38, 34, 24, 0.18)";
+    ctx.beginPath();
+    ctx.ellipse(1.5, 3, coin.r + 2, coin.r * 0.48, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#f6bd2f";
+    ctx.strokeStyle = "#7a4c0b";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, coin.r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(139, 82, 8, 0.72)";
+    ctx.lineWidth = 1.35;
+    ctx.beginPath();
+    ctx.arc(0, 0, coin.r * 0.57, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+    ctx.beginPath();
+    ctx.arc(-coin.r * 0.31, -coin.r * 0.34, coin.r * 0.17, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawCoinFeedback() {
+    if (!coinFeedback) return;
+    const remaining = clamp(coinFeedback.life / coinFeedback.maxLife, 0, 1);
+    const progress = 1 - remaining;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, remaining * 2.4);
+    ctx.translate(coinFeedback.x, coinFeedback.y - 14 - progress * 22);
+    ctx.font = "700 18px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(88, 53, 8, 0.72)";
+    ctx.strokeText("+1", 0, 0);
+    ctx.fillStyle = "#ffe06a";
+    ctx.fillText("+1", 0, 0);
+    ctx.restore();
   }
 
   function drawAmbient() {
@@ -2611,7 +2998,7 @@
   }
 
   function drawCurrentScore() {
-    if (state !== "playing" && state !== "paused" && state !== "pause-settings" && state !== "retry" && state !== "gameover") return;
+    if (state !== "playing" && state !== "paused" && state !== "pause-settings" && state !== "retry" && state !== "revive-offer" && state !== "gameover") return;
     const colors = getCanvasTheme();
     ctx.save();
     ctx.globalAlpha = 0.11;
@@ -3218,16 +3605,16 @@
 
   function writeBestScore(value, isNewRecord) {
     if (!Number.isSafeInteger(value) || value < 0) return;
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      if (isNewRecord) scheduleScoreSubmission(value);
-      return;
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(STORAGE_KEY, String(value));
+      } catch (error) {
+        // Storage can be unavailable in some embedded/browser privacy modes.
+      }
     }
-    try {
-      localStorage.setItem(STORAGE_KEY, String(value));
-    } catch (error) {
-      // Storage can be unavailable in some embedded/browser privacy modes.
-    }
+    schedulePlatformSave();
+    if (isPlayablesEnv && isNewRecord) scheduleScoreSubmission(value);
   }
 
   function readBooleanPreference(key, fallback) {
@@ -3278,84 +3665,274 @@
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.tr[key] || key;
   }
 
-  function writeBooleanPreference(key, value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
-    }
-    try {
-      localStorage.setItem(key, String(value));
-    } catch (error) {
-      // Preferences can be unavailable in embedded/browser privacy modes.
-    }
+  function normalizeCoins(value) {
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
   }
 
-  function writeLanguagePreference(value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
+  function normalizeOwnedIds(value, catalog, defaultId) {
+    const owned = new Set([defaultId]);
+    if (!Array.isArray(value)) return owned;
+    for (const id of value) {
+      if (typeof id === "string" && catalog[id]) owned.add(id);
     }
-    try {
-      localStorage.setItem(LANGUAGE_KEY, value);
-    } catch (error) {
-      // Language preferences can be unavailable in privacy modes.
-    }
+    return owned;
   }
 
-  function writeBallSkinPreference(value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
-    }
-    try {
-      localStorage.setItem(BALL_SKIN_KEY, value);
-    } catch (error) {
-      // Ball selection can be unavailable in privacy modes.
-    }
+  function hasCanonicalOwnedIds(value, owned, catalog) {
+    if (!Array.isArray(value)) return false;
+    const canonical = Object.keys(catalog).filter((id) => owned.has(id));
+    return value.length === canonical.length && value.every((id, index) => id === canonical[index]);
   }
 
-  function writeThemePreference(value) {
-    if (isPlayablesEnv) {
-      schedulePlatformSave();
-      return;
+  function migrateSaveData(save, platformLocale, allowSavedLanguage) {
+    const source = save && typeof save === "object" && !Array.isArray(save) ? save : null;
+    const version = source && Number.isSafeInteger(source.version) ? source.version : 0;
+    const settings = source && source.settings && typeof source.settings === "object"
+      ? source.settings
+      : source || {};
+    const savedScore = source ? Number(source.highScore) : 0;
+    const highScore = Number.isSafeInteger(savedScore) && savedScore >= 0 ? savedScore : 0;
+    const normalizedCoins = version >= SAVE_VERSION ? normalizeCoins(source?.coins) : 0;
+    let ballSkin = normalizeBallSkinId(settings.ballSkin);
+    let theme = THEMES[settings.theme] ? settings.theme : "gym";
+    const balls = version >= SAVE_VERSION
+      ? normalizeOwnedIds(source?.ownedBallSkins, BALL_SKINS, "classic")
+      : new Set(["classic", ballSkin]);
+    const themes = version >= SAVE_VERSION
+      ? normalizeOwnedIds(source?.ownedThemes, THEMES, "gym")
+      : new Set(["gym", theme]);
+
+    if (!balls.has(ballSkin)) ballSkin = "classic";
+    if (!themes.has(theme)) theme = "gym";
+
+    let migratedLanguage = language;
+    if (allowSavedLanguage && (settings.language === "tr" || settings.language === "en")) {
+      migratedLanguage = settings.language;
+    } else if (typeof platformLocale === "string" && platformLocale) {
+      migratedLanguage = platformLocale.toLowerCase().startsWith("tr") ? "tr" : "en";
     }
+
+    const needsMigration = Boolean(source) && (
+      version !== SAVE_VERSION
+      || highScore !== source.highScore
+      || normalizedCoins !== source.coins
+      || !hasCanonicalOwnedIds(source.ownedBallSkins, balls, BALL_SKINS)
+      || !hasCanonicalOwnedIds(source.ownedThemes, themes, THEMES)
+      || settings.ballSkin !== ballSkin
+      || settings.theme !== theme
+      || typeof settings.darkMode !== "boolean"
+      || typeof settings.muted !== "boolean"
+    );
+
+    return {
+      highScore,
+      coins: normalizedCoins,
+      ownedBallSkins: balls,
+      ownedThemes: themes,
+      darkMode: typeof settings.darkMode === "boolean" ? settings.darkMode : false,
+      muted: typeof settings.muted === "boolean" ? settings.muted : false,
+      ballSkin,
+      theme,
+      language: migratedLanguage,
+      needsMigration
+    };
+  }
+
+  function applyMigratedSave(migrated) {
+    best = migrated.highScore;
+    coins = migrated.coins;
+    ownedBallSkins = migrated.ownedBallSkins;
+    ownedThemes = migrated.ownedThemes;
+    darkMode = migrated.darkMode;
+    muted = migrated.muted;
+    selectedBallSkinId = migrated.ballSkin;
+    selectedThemeId = migrated.theme;
+    language = migrated.language;
+    ballEffects.selectedPreset = BALL_SKINS[selectedBallSkinId].effectPreset;
+  }
+
+  function readLocalSaveRecord() {
+    let rawData = null;
+    let parsed = null;
+    let invalidUnifiedSave = false;
     try {
-      localStorage.setItem(THEME_KEY, value);
+      rawData = localStorage.getItem(LOCAL_SAVE_KEY);
+      if (rawData && rawData.trim()) {
+        const candidate = JSON.parse(rawData);
+        if (candidate && typeof candidate === "object" && !Array.isArray(candidate)) parsed = candidate;
+        else invalidUnifiedSave = true;
+      }
     } catch (error) {
-      // Theme selection can be unavailable in privacy modes.
+      invalidUnifiedSave = Boolean(rawData);
     }
+    if (parsed) return { save: parsed, shouldPersist: false };
+
+    let hasLegacyData = false;
+    try {
+      hasLegacyData = [STORAGE_KEY, DARK_MODE_KEY, MUTED_KEY, LANGUAGE_KEY, BALL_SKIN_KEY, THEME_KEY]
+        .some((key) => localStorage.getItem(key) !== null);
+    } catch (error) {
+      hasLegacyData = false;
+    }
+    if (!hasLegacyData) return { save: null, shouldPersist: invalidUnifiedSave };
+    return {
+      save: {
+        version: 3,
+        highScore: readBestScore(),
+        settings: {
+          language: readLanguagePreference(),
+          darkMode: readBooleanPreference(DARK_MODE_KEY, false),
+          muted: readBooleanPreference(MUTED_KEY, false),
+          ballSkin: readBallSkinPreference(),
+          theme: readThemePreference()
+        }
+      },
+      shouldPersist: true
+    };
+  }
+
+  function writeBooleanPreference(key, value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(key, String(value));
+      } catch (error) {
+        // Preferences can be unavailable in embedded/browser privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function writeLanguagePreference(value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(LANGUAGE_KEY, value);
+      } catch (error) {
+        // Language preferences can be unavailable in privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function writeBallSkinPreference(value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(BALL_SKIN_KEY, value);
+      } catch (error) {
+        // Ball selection can be unavailable in privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function writeThemePreference(value, immediate) {
+    if (!persistenceReady) return;
+    if (!isPlayablesEnv) {
+      try {
+        localStorage.setItem(THEME_KEY, value);
+      } catch (error) {
+        // Theme selection can be unavailable in privacy modes.
+      }
+    }
+    requestSave(Boolean(immediate));
+  }
+
+  function makeSaveObject(forPlayables) {
+    const settings = {
+      darkMode: Boolean(darkMode),
+      muted: Boolean(muted),
+      ballSkin: ownedBallSkins.has(selectedBallSkinId) ? selectedBallSkinId : "classic",
+      theme: ownedThemes.has(selectedThemeId) ? selectedThemeId : "gym"
+    };
+    if (!forPlayables) settings.language = language;
+    return {
+      version: SAVE_VERSION,
+      highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
+      coins: normalizeCoins(coins),
+      ownedBallSkins: Object.keys(BALL_SKINS).filter((id) => ownedBallSkins.has(id)),
+      ownedThemes: Object.keys(THEMES).filter((id) => ownedThemes.has(id)),
+      settings
+    };
   }
 
   function makePlatformSaveData() {
-    return JSON.stringify({
-      version: 3,
-      highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
-      settings: {
-        language,
-        darkMode: Boolean(darkMode),
-        muted: Boolean(muted),
-        ballSkin: selectedBallSkinId,
-        theme: selectedThemeId
-      }
-    });
+    return JSON.stringify(makeSaveObject(isPlayablesEnv));
   }
 
-  function schedulePlatformSave() {
-    if (!isPlayablesEnv || !platformBootComplete || !playablesBridge) return;
+  function requestSave(immediate) {
+    if (!persistenceReady) return;
+    saveRevision += 1;
+    saveDirty = true;
+    if (immediate) {
+      if (cloudSaveTimer !== null) window.clearTimeout(cloudSaveTimer);
+      cloudSaveTimer = null;
+      void drainSaveQueue();
+      return;
+    }
     if (cloudSaveTimer !== null) window.clearTimeout(cloudSaveTimer);
     cloudSaveTimer = window.setTimeout(() => {
       cloudSaveTimer = null;
-      playablesBridge.saveData(makePlatformSaveData());
+      void drainSaveQueue();
     }, 350);
   }
 
+  function schedulePlatformSave() {
+    requestSave(false);
+  }
+
+  async function persistSaveData(data) {
+    if (isPlayablesEnv) {
+      if (!platformBootComplete || !playablesBridge) return false;
+      return playablesBridge.saveData(data);
+    }
+    try {
+      localStorage.setItem(LOCAL_SAVE_KEY, data);
+      return true;
+    } catch (error) {
+      console.warn("[Hoop Flick] Local save failed; it will be retried later.", error);
+      return false;
+    }
+  }
+
+  async function drainSaveQueue() {
+    if (!persistenceReady || !saveDirty) return true;
+    if (saveInFlight) {
+      saveDrainQueued = true;
+      return false;
+    }
+    saveInFlight = true;
+    let succeeded = true;
+    try {
+      do {
+        saveDrainQueued = false;
+        const revision = saveRevision;
+        const data = makePlatformSaveData();
+        const saved = await persistSaveData(data);
+        if (!saved) {
+          succeeded = false;
+          break;
+        }
+        savedRevision = revision;
+        if (saveRevision === revision) saveDirty = false;
+      } while (saveDrainQueued || saveRevision > savedRevision);
+    } catch (error) {
+      succeeded = false;
+      console.warn("[Hoop Flick] Save failed; it will be retried later.", error);
+    } finally {
+      saveInFlight = false;
+    }
+    return succeeded;
+  }
+
   function flushPlatformSave() {
-    if (!isPlayablesEnv || !platformBootComplete || !playablesBridge) return;
+    if (!persistenceReady) return Promise.resolve(false);
     if (cloudSaveTimer !== null) {
       window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
     }
-    playablesBridge.saveData(makePlatformSaveData());
+    return drainSaveQueue();
   }
 
   function scheduleScoreSubmission(value) {
@@ -3378,35 +3955,20 @@
 
   function applyPlatformSave(rawData, platformLocale) {
     let save = null;
+    let invalidSave = false;
     if (typeof rawData === "string" && rawData.trim()) {
       try {
         const parsed = JSON.parse(rawData);
-        if (parsed && typeof parsed === "object") save = parsed;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) save = parsed;
+        else invalidSave = true;
       } catch (error) {
+        invalidSave = true;
         console.warn("[Hoop Flick] Invalid cloud save; defaults will be used.", error);
       }
     }
-
-    const savedScore = save && Number(save.highScore);
-    if (Number.isSafeInteger(savedScore) && savedScore >= 0) best = savedScore;
-
-    const settings = save && save.settings && typeof save.settings === "object"
-      ? save.settings
-      : save;
-    if (settings && typeof settings.darkMode === "boolean") darkMode = settings.darkMode;
-    if (settings && typeof settings.muted === "boolean") muted = settings.muted;
-    if (settings && typeof settings.ballSkin === "string") {
-      selectedBallSkinId = normalizeBallSkinId(settings.ballSkin);
-      ballEffects.selectedPreset = BALL_SKINS[selectedBallSkinId].effectPreset;
-    }
-    if (settings && THEMES[settings.theme]) {
-      selectedThemeId = settings.theme;
-    }
-    if (settings && (settings.language === "tr" || settings.language === "en")) {
-      language = settings.language;
-    } else if (typeof platformLocale === "string") {
-      language = platformLocale.toLowerCase().startsWith("tr") ? "tr" : "en";
-    }
+    const migrated = migrateSaveData(save, platformLocale, true);
+    applyMigratedSave(migrated);
+    return invalidSave || migrated.needsMigration;
   }
 
   function applyDarkMode() {
@@ -3428,13 +3990,198 @@
     }
     writeLanguagePreference(language);
     if (state === "gameover") finalScore.textContent = t("score") + " " + score;
+    clearEconomyStatus("ball");
+    clearEconomyStatus("theme");
+    syncEconomyBalances();
     renderBallCustomizer();
     renderThemeCustomizer();
     syncControlLabels();
+    syncRewardedUi();
   }
 
   function getSelectedBallSkin() {
     return BALL_SKINS[selectedBallSkinId] || BALL_SKINS.classic;
+  }
+
+  function getCosmeticStateLabel(isSelected, isOwned, price) {
+    if (isSelected) return t("selectedSkin");
+    if (isOwned) return t("owned");
+    return t("locked") + " · " + price + " " + t("coins");
+  }
+
+  function syncEconomyBalances() {
+    const value = String(normalizeCoins(coins));
+    if (coinHudValue) coinHudValue.textContent = value;
+    if (ballCoinBalanceValue) ballCoinBalanceValue.textContent = value;
+    if (themeCoinBalanceValue) themeCoinBalanceValue.textContent = value;
+    const label = t("coinBalance") + ": " + value;
+    if (coinHud) coinHud.setAttribute("aria-label", label);
+    if (ballCoinBalance) ballCoinBalance.setAttribute("aria-label", label);
+    if (themeCoinBalance) themeCoinBalance.setAttribute("aria-label", label);
+  }
+
+  function hasRewardedCapability() {
+    if (!playablesBridge || typeof playablesBridge.isRewardedAdAvailable !== "function") return false;
+    try {
+      return playablesBridge.isRewardedAdAvailable() === true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function syncRewardedUi() {
+    const available = hasRewardedCapability();
+    const busy = Boolean(rewardedRequest);
+    const coinLabel = busy
+      ? t("rewardedPending")
+      : available
+        ? t("watchAdCoins")
+        : t("rewardedUnavailable");
+    for (const button of [ballRewardedCoinButton, themeRewardedCoinButton]) {
+      if (!button) continue;
+      const label = button.querySelector("span:last-child");
+      if (label) label.textContent = coinLabel;
+      button.disabled = !platformReady || platformPaused || !available || busy;
+      button.setAttribute("aria-busy", String(busy));
+      button.setAttribute("aria-label", coinLabel);
+      button.title = available ? "" : t("rewardedUnavailable");
+    }
+
+    const continuePending = rewardedRequest?.kind === "continue";
+    if (reviveRewardButton) {
+      reviveRewardButton.disabled = state !== "revive-offer" || platformPaused || !available || busy;
+      reviveRewardButton.setAttribute("aria-busy", String(continuePending));
+      reviveRewardButton.textContent = continuePending ? t("rewardedPending") : t("watchAdContinue");
+    }
+    if (reviveFinishButton) {
+      reviveFinishButton.disabled = state !== "revive-offer" || platformPaused || continuePending;
+    }
+  }
+
+  function requestRewardedCoins(origin) {
+    if (!platformReady || platformPaused || rewardedRequest || !hasRewardedCapability()) {
+      syncRewardedUi();
+      return false;
+    }
+    clearEconomyStatus(origin);
+    return startRewardedRequest("coins", COIN_REWARD_ID, origin);
+  }
+
+  function requestRewardedContinue() {
+    if (
+      state !== "revive-offer"
+      || !reviveOfferActive
+      || gameOverFinalized
+      || reviveUsed
+      || platformPaused
+      || rewardedRequest
+      || !hasRewardedCapability()
+    ) {
+      if (state === "revive-offer" && !rewardedRequest) finalizeGameOver();
+      return false;
+    }
+    if (reviveOfferStatus) reviveOfferStatus.textContent = t("rewardedPending");
+    return startRewardedRequest("continue", CONTINUE_REWARD_ID, "revive");
+  }
+
+  function startRewardedRequest(kind, rewardId, origin) {
+    if (rewardedRequest || !playablesBridge || typeof playablesBridge.requestRewardedAd !== "function") return false;
+    const request = {
+      id: rewardedRequestSequence += 1,
+      kind,
+      origin,
+      settled: false,
+      earned: false
+    };
+    rewardedRequest = request;
+    syncRewardedUi();
+    let result;
+    try {
+      result = playablesBridge.requestRewardedAd(rewardId);
+    } catch (error) {
+      settleRewardedRequest(request, false);
+      return true;
+    }
+    Promise.resolve(result).then(
+      (earned) => settleRewardedRequest(request, earned === true),
+      () => settleRewardedRequest(request, false)
+    );
+    return true;
+  }
+
+  function settleRewardedRequest(request, earned) {
+    if (rewardedRequest !== request || request.settled) return;
+    request.settled = true;
+    request.earned = earned === true;
+    if (platformPaused) {
+      syncRewardedUi();
+      return;
+    }
+    completeRewardedRequest(request);
+  }
+
+  function completeRewardedRequest(request, restartLoop) {
+    if (rewardedRequest !== request || !request.settled || platformPaused) return false;
+    rewardedRequest = null;
+    if (request.kind === "coins") {
+      if (request.earned === true) {
+        coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + REWARDED_COIN_AMOUNT);
+        syncEconomyBalances();
+        showEconomyStatus(request.origin, t("rewardedCoinsGranted"));
+        requestSave(true);
+      } else {
+        showEconomyStatus(request.origin, t("rewardedNotEarned"));
+      }
+      syncRewardedUi();
+      return true;
+    }
+    if (request.kind === "continue" && state === "revive-offer" && !gameOverFinalized) {
+      if (reviveOfferStatus) reviveOfferStatus.textContent = request.earned === true ? "" : t("rewardedNotEarned");
+      if (request.earned === true) {
+        resumeFromRewardedContinue(restartLoop);
+      } else {
+        finalizeGameOver();
+      }
+    }
+    syncRewardedUi();
+    return true;
+  }
+
+  function processDeferredRewardedRequest() {
+    if (!rewardedRequest?.settled || platformPaused) return false;
+    return completeRewardedRequest(rewardedRequest, false);
+  }
+
+  function declineReviveOffer() {
+    if (state !== "revive-offer" || rewardedRequest?.kind === "continue") return false;
+    return finalizeGameOver();
+  }
+
+  function updateReviveOffer(dt) {
+    if (!reviveOfferActive || state !== "revive-offer" || rewardedRequest?.kind === "continue") return;
+    reviveOfferRemaining = Math.max(0, reviveOfferRemaining - dt);
+    if (reviveOfferCountdown) reviveOfferCountdown.textContent = reviveOfferRemaining.toFixed(1);
+    if (reviveOfferRemaining <= 0) finalizeGameOver();
+  }
+
+  function clearEconomyStatus(kind) {
+    const status = kind === "ball" ? ballEconomyStatus : themeEconomyStatus;
+    if (economyStatusTimers[kind] !== null) {
+      window.clearTimeout(economyStatusTimers[kind]);
+      economyStatusTimers[kind] = null;
+    }
+    if (status) status.textContent = "";
+  }
+
+  function showEconomyStatus(kind, message) {
+    const status = kind === "ball" ? ballEconomyStatus : themeEconomyStatus;
+    clearEconomyStatus(kind);
+    if (!status) return;
+    status.textContent = message;
+    economyStatusTimers[kind] = window.setTimeout(() => {
+      economyStatusTimers[kind] = null;
+      status.textContent = "";
+    }, 2200);
   }
 
   function createBallPreviewElement(sizeClass, skin) {
@@ -3470,6 +4217,7 @@
 
   function renderBallCustomizer() {
     if (!customizeBallPreview || !customizeBallName || !ballSkinList) return;
+    syncEconomyBalances();
     const selectedSkin = getSelectedBallSkin();
     customizeBallPreview.replaceChildren(createBallPreviewElement("large"));
     customizeBallName.textContent = t(selectedSkin.nameKey);
@@ -3478,23 +4226,27 @@
     for (const skin of Object.values(BALL_SKINS)) {
       const option = document.createElement("button");
       const isSelected = skin.id === selectedBallSkinId;
+      const isOwned = ownedBallSkins.has(skin.id);
+      const price = ECONOMY_PRICES.ball[skin.id] ?? 0;
+      const stateLabel = isSelected ? t("selectedSkin") : getCosmeticStateLabel(false, isOwned, price);
       option.type = "button";
-      option.className = "ballSkinOption";
+      option.className = "ballSkinOption" + (isOwned ? "" : " locked");
       option.setAttribute("role", "option");
       option.setAttribute("aria-selected", String(isSelected));
-      option.setAttribute("aria-label", t(skin.nameKey) + ", " + (isSelected ? t("selectedSkin") : t("selectSkin")));
+      option.setAttribute("aria-label", t(skin.nameKey) + ", " + stateLabel);
       option.appendChild(createBallPreviewElement("", skin));
 
       const copy = document.createElement("span");
       const name = document.createElement("strong");
       const description = document.createElement("small");
       name.textContent = t(skin.nameKey);
-      description.textContent = isSelected ? t("selectedSkin") : t("selectSkin");
+      description.textContent = stateLabel;
       copy.append(name, description);
       option.appendChild(copy);
 
       const check = document.createElement("span");
-      check.className = "ballSkinCheck";
+      check.className = "ballSkinCheck" + (isOwned ? "" : " locked");
+      check.setAttribute("aria-hidden", "true");
       check.textContent = isSelected ? "✓" : "";
       option.appendChild(check);
       option.addEventListener("click", () => selectBallSkin(skin.id));
@@ -3504,17 +4256,21 @@
 
   function renderThemeCustomizer() {
     if (!themeList) return;
+    syncEconomyBalances();
     themeList.replaceChildren();
 
     for (const theme of Object.values(THEMES)) {
       const option = document.createElement("button");
       const isSelected = theme.id === selectedThemeId;
+      const isOwned = ownedThemes.has(theme.id);
+      const price = ECONOMY_PRICES.theme[theme.id] ?? 0;
+      const stateLabel = isSelected ? t("selectedTheme") : getCosmeticStateLabel(false, isOwned, price);
       const colors = darkMode ? theme.colors.dark : theme.colors.light;
       option.type = "button";
-      option.className = "themeOption";
+      option.className = "themeOption" + (isOwned ? "" : " locked");
       option.setAttribute("role", "option");
       option.setAttribute("aria-selected", String(isSelected));
-      option.setAttribute("aria-label", t(theme.nameKey) + ", " + (isSelected ? t("selectedTheme") : t("chooseTheme")));
+      option.setAttribute("aria-label", t(theme.nameKey) + ", " + stateLabel);
       option.style.setProperty("--theme-bg-top", colors.backgroundTop);
       option.style.setProperty("--theme-bg-bottom", colors.backgroundBottom);
       option.style.setProperty("--theme-rim", colors.rim);
@@ -3528,11 +4284,12 @@
       const name = document.createElement("strong");
       const description = document.createElement("small");
       name.textContent = t(theme.nameKey);
-      description.textContent = isSelected ? t("selectedTheme") : t("chooseTheme");
+      description.textContent = stateLabel;
       copy.append(name, description);
 
       const check = document.createElement("span");
-      check.className = "ballSkinCheck";
+      check.className = "ballSkinCheck" + (isOwned ? "" : " locked");
+      check.setAttribute("aria-hidden", "true");
       check.textContent = isSelected ? "✓" : "";
       option.append(swatch, copy, check);
       option.addEventListener("click", () => selectTheme(theme.id));
@@ -3541,20 +4298,48 @@
   }
 
   function selectBallSkin(skinId) {
-    if (!BALL_SKINS[skinId] || platformPaused) return;
+    if (!BALL_SKINS[skinId] || platformPaused || rewardedRequest) return;
+    const price = ECONOMY_PRICES.ball[skinId] ?? 0;
+    const isOwned = ownedBallSkins.has(skinId);
+    if (!isOwned && coins < price) {
+      showEconomyStatus("ball", t("insufficientCoins") + " · " + price + " " + t("coins"));
+      ensureAudio();
+      playGameSound("button");
+      return;
+    }
+    if (!isOwned) {
+      coins -= price;
+      ownedBallSkins.add(skinId);
+    }
     selectedBallSkinId = skinId;
     ballEffects.selectedPreset = BALL_SKINS[skinId].effectPreset;
-    writeBallSkinPreference(skinId);
+    writeBallSkinPreference(skinId, !isOwned);
+    syncEconomyBalances();
     renderBallCustomizer();
+    if (!isOwned) showEconomyStatus("ball", t("purchased") + ": " + t(BALL_SKINS[skinId].nameKey));
     ensureAudio();
     playGameSound("button");
   }
 
   function selectTheme(themeId) {
-    if (!THEMES[themeId] || platformPaused) return;
+    if (!THEMES[themeId] || platformPaused || rewardedRequest) return;
+    const price = ECONOMY_PRICES.theme[themeId] ?? 0;
+    const isOwned = ownedThemes.has(themeId);
+    if (!isOwned && coins < price) {
+      showEconomyStatus("theme", t("insufficientCoins") + " · " + price + " " + t("coins"));
+      ensureAudio();
+      playGameSound("button");
+      return;
+    }
+    if (!isOwned) {
+      coins -= price;
+      ownedThemes.add(themeId);
+    }
     selectedThemeId = themeId;
-    writeThemePreference(themeId);
+    writeThemePreference(themeId, !isOwned);
+    syncEconomyBalances();
     renderThemeCustomizer();
+    if (!isOwned) showEconomyStatus("theme", t("purchased") + ": " + t(THEMES[themeId].nameKey));
     draw();
     ensureAudio();
     playGameSound("button");
@@ -3708,7 +4493,7 @@
   }
 
   function canRunAnimationLoop() {
-    return platformReady && !platformPaused && !userPaused && document.visibilityState !== "hidden";
+    return platformReady && !platformPaused && !userPaused;
   }
 
   function stopAnimationLoop() {
@@ -3756,6 +4541,7 @@
     }
     activePointer = null;
     stopAnimationLoop();
+    syncRewardedUi();
     if (audioContext && audioContext.state === "running") audioContext.suspend().catch(() => {});
     flushScoreSubmission();
     flushPlatformSave();
@@ -3766,6 +4552,8 @@
     platformPaused = false;
     gameShell.inert = false;
     if (platformAudioEnabled && !muted && !userPaused && audioContext) audioContext.resume().catch(() => {});
+    processDeferredRewardedRequest();
+    syncRewardedUi();
     restartAnimationLoop();
   }
 
@@ -3800,23 +4588,6 @@
     animationFrameId = window.requestAnimationFrame((nextNow) => loop(nextNow, generation, false));
   }
 
-  function handleVisibilityChange() {
-    if (document.visibilityState === "hidden") stopAnimationLoop();
-    else restartAnimationLoop();
-  }
-
-  function handlePageShow() {
-    if (document.visibilityState !== "hidden") restartAnimationLoop();
-  }
-
-  function handlePageHide() {
-    stopAnimationLoop();
-  }
-
-  function handleWindowFocus() {
-    if (document.visibilityState !== "hidden") restartAnimationLoop();
-  }
-
   async function bootGame() {
     resize();
     applyLanguage();
@@ -3845,13 +4616,24 @@
 
     isPlayablesEnv = Boolean(platformState.inPlayablesEnv);
     platformAudioEnabled = platformState.audioEnabled !== false;
-    if (isPlayablesEnv) applyPlatformSave(platformState.data, platformState.language);
+    let shouldPersistMigratedSave = false;
+    if (isPlayablesEnv) {
+      shouldPersistMigratedSave = applyPlatformSave(platformState.data, platformState.language);
+    } else {
+      const localRecord = readLocalSaveRecord();
+      const migrated = migrateSaveData(localRecord.save, null, true);
+      applyMigratedSave(migrated);
+      shouldPersistMigratedSave = localRecord.shouldPersist || migrated.needsMigration;
+    }
     applyLanguage();
     applyDarkMode();
     resetGame(true);
     platformBootComplete = true;
+    persistenceReady = true;
     platformReady = true;
     gameShell.inert = platformPaused;
+    syncRewardedUi();
+    if (shouldPersistMigratedSave) requestSave(true);
     if (playablesBridge) playablesBridge.gameReady();
     restartAnimationLoop();
   }
@@ -3866,10 +4648,6 @@
 
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("orientationchange", resize, { passive: true });
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  window.addEventListener("pageshow", handlePageShow);
-  window.addEventListener("pagehide", handlePageHide);
-  window.addEventListener("focus", handleWindowFocus);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
@@ -3885,6 +4663,10 @@
   settingsBackButton.addEventListener("click", closeSettings);
   customizeBackButton.addEventListener("click", returnToMainMenu);
   if (themeBackButton) themeBackButton.addEventListener("click", returnToMainMenu);
+  ballRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("ball"));
+  themeRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("theme"));
+  reviveRewardButton?.addEventListener("click", requestRewardedContinue);
+  reviveFinishButton?.addEventListener("click", declineReviveOffer);
   menuButton.addEventListener("click", toggleGameplayPause);
   pauseMainMenuButton.addEventListener("click", exitGameplayToMainMenu);
   pauseSettingsButton.addEventListener("click", openPauseSettings);

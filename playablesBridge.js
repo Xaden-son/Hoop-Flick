@@ -105,6 +105,21 @@
     }
   }
 
+  function isRewardedAdAvailable() {
+    return Boolean(inPlayablesEnv && sdk && sdk.ads && typeof sdk.ads.requestRewardedAd === "function");
+  }
+
+  async function requestRewardedAd(rewardId) {
+    if (!isRewardedAdAvailable() || typeof rewardId !== "string" || !rewardId) return false;
+    try {
+      const result = callSdk("ads", "requestRewardedAd", [rewardId]);
+      return await Promise.resolve(result) === true;
+    } catch (error) {
+      report("warning", "Rewarded ad request failed", error);
+      return false;
+    }
+  }
+
   function firstFrameReady() {
     if (firstFrameSent) return;
     firstFrameSent = true;
@@ -118,13 +133,18 @@
     callSdk("game", "gameReady");
   }
 
-  function sendScore(value) {
+  async function sendScore(value) {
     if (!isValidScore(value)) {
       report("warning", "Invalid score was not sent: " + String(value));
       return false;
     }
-    callSdk("engagement", "sendScore", [{ value }]);
-    return true;
+    try {
+      await Promise.resolve(callSdk("engagement", "sendScore", [{ value }]));
+      return true;
+    } catch (error) {
+      report("warning", "Score submission failed", error);
+      return false;
+    }
   }
 
   function readAudioEnabled() {
@@ -133,10 +153,15 @@
     return typeof value === "boolean" ? value : true;
   }
 
-  function getLanguage() {
+  async function getLanguage() {
     if (!inPlayablesEnv) return null;
-    const locale = callSdk("system", "getLanguage");
-    return typeof locale === "string" && locale ? locale : null;
+    try {
+      const locale = await Promise.resolve(callSdk("system", "getLanguage"));
+      return typeof locale === "string" && locale ? locale : null;
+    } catch (error) {
+      report("warning", "Playables language could not be loaded", error);
+      return null;
+    }
   }
 
   async function initialize(handlers) {
@@ -162,10 +187,11 @@
       }
     }
     const data = await loadData();
+    const language = await getLanguage();
     return {
       data,
       audioEnabled,
-      language: getLanguage(),
+      language,
       inPlayablesEnv
     };
   }
@@ -177,6 +203,8 @@
     sendScore,
     loadData,
     saveData,
+    isRewardedAdAvailable,
+    requestRewardedAd,
     isAudioEnabled: () => audioEnabled,
     getLanguage,
     isInPlayablesEnv: () => inPlayablesEnv,
