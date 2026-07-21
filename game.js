@@ -116,9 +116,6 @@
   const MIN_HOOP_TILT = 2.5 * (Math.PI / 180);
   const MAX_HOOP_TILT = 7 * (Math.PI / 180);
 
-  // MANUAL GAMEPLAY VARIETY TUNING
-  // Keep disabled in production. When enabled, one summary is logged per spawned transition.
-  const DEBUG_GAMEPLAY_VARIETY = false;
   const TUTORIAL_LAST_TARGET_ID = 4;
   const VARIETY_CHANCE_FULL_SCORE = 50;
   const MAX_HARD_TRANSITION_STREAK = 1;
@@ -1778,7 +1775,6 @@
     }
 
     commitTransitionHistory(transitionPlan);
-    debugGameplayTransition(transitionPlan, last, hoop);
     hoops.push(hoop);
     if (hoops.length > 5) hoops.shift();
     return hoop;
@@ -1935,21 +1931,6 @@
     transitionHistory.lastWasLongShot = LONG_SHOT_COOLDOWN_TRANSITIONS > 0 && plan.longShot;
     transitionHistory.lastWasNear = plan.geometryName === "normalNear";
     transitionHistory.lastWasEdge = EDGE_TRANSITION_COOLDOWN > 0 && plan.edge;
-  }
-
-  function debugGameplayTransition(plan, source, target) {
-    if (!DEBUG_GAMEPLAY_VARIETY) return;
-    console.debug("[Hoop Flick] Gameplay transition", {
-      tier: plan.tier,
-      difficulty: plan.difficulty,
-      horizontalGap: Number(Math.abs(target.x - source.x).toFixed(1)),
-      verticalGap: Number((source.y - target.y).toFixed(1)),
-      geometry: plan.geometryName,
-      longShot: plan.longShot,
-      edge: plan.edge,
-      challengeBudget: plan.budget,
-      fallback: plan.fallback
-    });
   }
 
   function isFairSpawn(source, target, plan) {
@@ -4512,7 +4493,7 @@
   }
 
   function canRunAnimationLoop() {
-    return platformReady && !platformPaused && !userPaused && document.visibilityState !== "hidden";
+    return platformReady && !platformPaused && !userPaused;
   }
 
   function stopAnimationLoop() {
@@ -4607,23 +4588,6 @@
     animationFrameId = window.requestAnimationFrame((nextNow) => loop(nextNow, generation, false));
   }
 
-  function handleVisibilityChange() {
-    if (document.visibilityState === "hidden") stopAnimationLoop();
-    else restartAnimationLoop();
-  }
-
-  function handlePageShow() {
-    if (document.visibilityState !== "hidden") restartAnimationLoop();
-  }
-
-  function handlePageHide() {
-    stopAnimationLoop();
-  }
-
-  function handleWindowFocus() {
-    if (document.visibilityState !== "hidden") restartAnimationLoop();
-  }
-
   async function bootGame() {
     resize();
     applyLanguage();
@@ -4684,10 +4648,6 @@
 
   window.addEventListener("resize", resize, { passive: true });
   window.addEventListener("orientationchange", resize, { passive: true });
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-  window.addEventListener("pageshow", handlePageShow);
-  window.addEventListener("pagehide", handlePageHide);
-  window.addEventListener("focus", handleWindowFocus);
   canvas.addEventListener("pointerdown", onPointerDown);
   canvas.addEventListener("pointermove", onPointerMove);
   canvas.addEventListener("pointerup", onPointerUp);
