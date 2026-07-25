@@ -8,7 +8,8 @@ No installation is required:
 
 ### [Play Hoop Flick in your browser](https://xaden-son.github.io/Hoop-Flick/)
 
-The game works with mouse and touch controls. For the best experience, play on a mobile device or in a portrait-oriented browser window.
+The game works with mouse and touch controls. For the best experience on my experiences, playing with a mouse is more great. Even so, in a mobile web browser has a good experince. 
+You can play both of them.
 
 ## How to Play
 
