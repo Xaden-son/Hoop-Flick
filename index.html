@@ -26,7 +26,40 @@
           <button id="startButton" class="primaryButton" type="button" data-i18n="play">Oyna</button>
           <button id="customizeButton" class="secondaryButton" type="button" data-i18n="customize">Topu Özelleştir</button>
           <button id="customizeThemeButton" class="secondaryButton" type="button" data-i18n="customizeTheme">Temayı Özelleştir</button>
+          <button id="profileButton" class="secondaryButton" type="button" data-i18n="profile">Profil</button>
           <button id="settingsButton" class="secondaryButton" type="button" data-i18n="settings">Ayarlar</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="profileOverlay" class="overlay menuOverlay" aria-live="polite">
+      <div class="panel menuPanel compact profilePanel">
+        <span class="eyebrow">HOOP FLICK</span>
+        <h2 data-i18n="profile">Profil</h2>
+        <dl class="profileStats">
+          <div class="profileStat">
+            <dt data-i18n="activePlayTime">Aktif Oynama Süresi</dt>
+            <dd id="activePlayTimeValue">00:00:00</dd>
+          </div>
+          <div class="profileStat">
+            <dt data-i18n="perfectBaskets">Deliksiz Atışlar</dt>
+            <dd id="perfectBasketsValue">0</dd>
+          </div>
+          <div class="profileStat">
+            <dt data-i18n="bounceBaskets">Duvardan Atışlar</dt>
+            <dd id="bounceBasketsValue">0</dd>
+          </div>
+          <div class="profileStat">
+            <dt data-i18n="lifetimeScore">Toplam Skor</dt>
+            <dd id="lifetimeScoreValue">0</dd>
+          </div>
+          <div class="profileStat">
+            <dt data-i18n="worldCoinsCollected">Toplanan Dünya Coinleri</dt>
+            <dd id="worldCoinsCollectedValue">0</dd>
+          </div>
+        </dl>
+        <div class="menuActions">
+          <button id="profileBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
         </div>
       </div>
     </section>
@@ -93,10 +126,11 @@
       <div class="panel compact pausePanel">
         <span class="eyebrow" data-i18n="pauseEyebrow">OYUN DURAKLATILDI</span>
         <h2 data-i18n="paused">Duraklatıldı</h2>
-        <p data-i18n="pauseHint">Devam etmek için sağ üstteki Devam düğmesine bas.</p>
+        <p data-i18n="pauseHint">Oyuna dönmek için Devam Et düğmesine bas.</p>
         <div class="menuActions">
-          <button id="pauseMainMenuButton" class="primaryButton" type="button" data-i18n="returnMainMenu">Ana Menüye Dön</button>
+          <button id="pauseContinueButton" class="primaryButton" type="button" data-i18n="continue">Devam Et</button>
           <button id="pauseSettingsButton" class="secondaryButton" type="button" data-i18n="settings">Ayarlar</button>
+          <button id="pauseMainMenuButton" class="secondaryButton" type="button" data-i18n="returnMainMenu">Ana Menüye Dön</button>
         </div>
       </div>
     </section>
@@ -145,7 +179,6 @@
       </div>
       <div class="hudActions">
         <button id="menuButton" class="iconButton" type="button" data-i18n="menu">Menü</button>
-        <button id="soundButton" class="iconButton" type="button" aria-label="Toggle sound" aria-pressed="true">Ses</button>
       </div>
       <div id="coinHud" class="coinHud" role="status" aria-live="polite">
         <span class="coinIcon" aria-hidden="true"></span>

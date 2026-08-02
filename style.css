@@ -173,11 +173,6 @@ body.dark-mode #gameShell {
   font-size: 15px;
 }
 
-.iconButton[aria-pressed="false"] {
-  color: var(--muted);
-  background: var(--hud-muted-bg);
-}
-
 .overlay {
   position: absolute;
   z-index: 5;
@@ -303,6 +298,47 @@ body.dark-mode #gameShell {
 
 .menuPanel h2 {
   margin-top: 8px;
+}
+
+.profilePanel {
+  width: min(410px, 92vw);
+}
+
+.profileStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 20px 0 0;
+}
+
+.profileStat {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  text-align: left;
+  background: var(--secondary-bg);
+}
+
+.profileStat:last-child {
+  grid-column: 1 / -1;
+}
+
+.profileStat dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.profileStat dd {
+  margin: 7px 0 0;
+  color: var(--ink);
+  font-size: 24px;
+  font-weight: 850;
+  line-height: 1;
 }
 
 .customizePanel {
@@ -799,7 +835,8 @@ p {
   }
 
   .menuPanel,
-  .customizePanel {
+  .customizePanel,
+  .profilePanel {
     width: min(376px, 94vw);
   }
 
@@ -841,6 +878,15 @@ p {
   .menuActions {
     gap: 8px;
     margin-top: 14px;
+  }
+
+  .profileStats {
+    gap: 8px;
+    margin-top: 14px;
+  }
+
+  .profileStat {
+    padding: 12px;
   }
 
   .primaryButton {
@@ -919,6 +965,16 @@ p {
   }
 }
 
+@media (max-width: 359px) {
+  .profileStats {
+    grid-template-columns: 1fr;
+  }
+
+  .profileStat:last-child {
+    grid-column: auto;
+  }
+}
+
 @media (max-height: 740px) {
   .panel.compact {
     padding: 18px;
@@ -945,5 +1001,14 @@ p {
 
   .menuActions {
     margin-top: 12px;
+  }
+
+  .profileStats {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .profileStat {
+    padding: 10px 12px;
   }
 }

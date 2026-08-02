@@ -5,6 +5,7 @@
   const ctx = canvas.getContext("2d", { alpha: true });
   const gameShell = document.getElementById("gameShell");
   const mainMenuOverlay = document.getElementById("mainMenuOverlay");
+  const profileOverlay = document.getElementById("profileOverlay");
   const settingsOverlay = document.getElementById("settingsOverlay");
   const customizeOverlay = document.getElementById("customizeOverlay");
   const themeOverlay = document.getElementById("themeOverlay");
@@ -14,6 +15,7 @@
   const hud = document.getElementById("hud");
   const themeColor = document.getElementById("themeColor");
   const startButton = document.getElementById("startButton");
+  const profileButton = document.getElementById("profileButton");
   const customizeButton = document.getElementById("customizeButton");
   const customizeThemeButton = document.getElementById("customizeThemeButton");
   const settingsButton = document.getElementById("settingsButton");
@@ -21,8 +23,10 @@
   const settingsDarkModeButton = document.getElementById("settingsDarkModeButton");
   const languageButton = document.getElementById("languageButton");
   const settingsBackButton = document.getElementById("settingsBackButton");
+  const profileBackButton = document.getElementById("profileBackButton");
   const customizeBackButton = document.getElementById("customizeBackButton");
   const themeBackButton = document.getElementById("themeBackButton");
+  const pauseContinueButton = document.getElementById("pauseContinueButton");
   const pauseMainMenuButton = document.getElementById("pauseMainMenuButton");
   const pauseSettingsButton = document.getElementById("pauseSettingsButton");
   const customizeBallPreview = document.getElementById("customizeBallPreview");
@@ -42,12 +46,16 @@
   const retryButton = document.getElementById("retryButton");
   const retryMenuButton = document.getElementById("retryMenuButton");
   const menuButton = document.getElementById("menuButton");
-  const soundButton = document.getElementById("soundButton");
   const scoreValue = document.getElementById("scoreValue");
   const bestValue = document.getElementById("bestValue");
   const finalScore = document.getElementById("finalScore");
   const coinHud = document.getElementById("coinHud");
   const coinHudValue = document.getElementById("coinHudValue");
+  const activePlayTimeValue = document.getElementById("activePlayTimeValue");
+  const perfectBasketsValue = document.getElementById("perfectBasketsValue");
+  const bounceBasketsValue = document.getElementById("bounceBasketsValue");
+  const lifetimeScoreValue = document.getElementById("lifetimeScoreValue");
+  const worldCoinsCollectedValue = document.getElementById("worldCoinsCollectedValue");
   const reviveOfferOverlay = document.getElementById("reviveOfferOverlay");
   const reviveOfferCountdown = document.getElementById("reviveOfferCountdown");
   const reviveOfferStatus = document.getElementById("reviveOfferStatus");
@@ -61,7 +69,9 @@
   const BALL_SKIN_KEY = "hoop-flick-ball-skin";
   const THEME_KEY = "hoop-flick-theme";
   const LOCAL_SAVE_KEY = "hoop-flick-save-v4";
-  const SAVE_VERSION = 4;
+  const SAVE_VERSION = 5;
+  const ECONOMY_SAVE_VERSION = 4;
+  const STATS_SAVE_VERSION = 5;
   const WORLD_W = 420;
   const WORLD_H = 746;
   const START_HOOP_BOTTOM_OFFSET = 183;
@@ -917,6 +927,12 @@
       arcadeEyebrow: "ARCADE BASKETBOL",
       tagline: "Çek, bırak ve yükselmeye devam et.",
       play: "Oyna",
+      profile: "Profil",
+      activePlayTime: "Aktif Oynama Süresi",
+      perfectBaskets: "Deliksiz Atışlar",
+      bounceBaskets: "Duvardan Atışlar",
+      lifetimeScore: "Toplam Skor",
+      worldCoinsCollected: "Toplanan Dünya Coinleri",
       customize: "Topu Özelleştir",
       customizeTheme: "Temayı Özelleştir",
       settings: "Ayarlar",
@@ -973,8 +989,8 @@
       returnMainMenu: "Ana Menüye Dön",
       paused: "Duraklatıldı",
       pauseEyebrow: "OYUN DURAKLATILDI",
-      pauseHint: "Devam etmek için sağ üstteki Devam düğmesine bas.",
-      continue: "Devam",
+      pauseHint: "Oyuna dönmek için Devam Et düğmesine bas.",
+      continue: "Devam Et",
       ballStuck: "Top Sıkıştı mı?",
       retryText: "Son hoop'a dön ve oynamaya devam et.",
       retry: "Tekrar Dene",
@@ -982,7 +998,6 @@
       best: "En İyi",
       menu: "Menü",
       sound: "Ses",
-      muted: "Sessiz",
       darkMode: "Karanlık Mod",
       language: "Dil",
       turkish: "Türkçe",
@@ -1000,6 +1015,12 @@
       arcadeEyebrow: "ARCADE BASKETBALL",
       tagline: "Drag, release, and keep climbing.",
       play: "Play",
+      profile: "Profile",
+      activePlayTime: "Active Play Time",
+      perfectBaskets: "Perfect Baskets",
+      bounceBaskets: "Bounce Baskets",
+      lifetimeScore: "Lifetime Score",
+      worldCoinsCollected: "World Coins Collected",
       customize: "Customize Ball",
       customizeTheme: "Customize Theme",
       settings: "Settings",
@@ -1056,7 +1077,7 @@
       returnMainMenu: "Return to Main Menu",
       paused: "Paused",
       pauseEyebrow: "GAME PAUSED",
-      pauseHint: "Press Continue in the top-right corner to resume.",
+      pauseHint: "Press Continue to return to the game.",
       continue: "Continue",
       ballStuck: "Ball Stuck?",
       retryText: "Return to your last hoop and keep playing.",
@@ -1065,7 +1086,6 @@
       best: "Best",
       menu: "Menu",
       sound: "Sound",
-      muted: "Muted",
       darkMode: "Dark Mode",
       language: "Language",
       turkish: "Turkish",
@@ -1117,6 +1137,8 @@
   let darkMode = readBooleanPreference(DARK_MODE_KEY, false);
   let language = readLanguagePreference();
   let state = "menu";
+  let stats = createDefaultStats();
+  let activePlaySegmentStartedAt = null;
   let score = 0;
   let best = readBestScore();
   let runStartBestScore = best;
@@ -1210,6 +1232,44 @@
     if (userPaused) draw();
   }
 
+  function canAccumulateActivePlayTime() {
+    return platformReady && !platformPaused && !userPaused && state === "playing";
+  }
+
+  function startActivePlayClock(now) {
+    if (activePlaySegmentStartedAt !== null || !canAccumulateActivePlayTime()) return false;
+    const timestamp = Number.isFinite(now) ? now : performance.now();
+    activePlaySegmentStartedAt = timestamp;
+    return true;
+  }
+
+  function commitActivePlaySegment(options) {
+    if (activePlaySegmentStartedAt === null) return false;
+    const config = options || {};
+    const timestamp = Number.isFinite(config.now) ? config.now : performance.now();
+    const elapsedMs = Math.max(0, Math.floor(timestamp - activePlaySegmentStartedAt));
+    const keepRunning = Boolean(config.keepRunning) && canAccumulateActivePlayTime();
+    activePlaySegmentStartedAt = keepRunning ? timestamp : null;
+    if (elapsedMs <= 0) return false;
+    stats.activePlayTimeMs = addSafeStat(stats.activePlayTimeMs, elapsedMs);
+    return true;
+  }
+
+  function stopActivePlayClock(now) {
+    return commitActivePlaySegment({ now, keepRunning: false });
+  }
+
+  function setGameState(nextState) {
+    if (state === nextState) {
+      startActivePlayClock();
+      return false;
+    }
+    const activeTimeChanged = state === "playing" ? stopActivePlayClock() : false;
+    state = nextState;
+    startActivePlayClock();
+    return activeTimeChanged;
+  }
+
   function resetGame(toMenu) {
     userPaused = false;
     settingsOrigin = "menu";
@@ -1262,8 +1322,9 @@
     placeBallInHoop(hoops[0]);
     ball.scoredHoopId = hoops[0].id;
     updateScore();
-    state = toMenu ? "menu" : "playing";
+    setGameState(toMenu ? "menu" : "playing");
     mainMenuOverlay.classList.toggle("active", state === "menu");
+    profileOverlay.classList.remove("active");
     settingsOverlay.classList.remove("active");
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
@@ -1381,7 +1442,7 @@
     if (score <= 0 || gameOverFinalized || reviveUsed || rewardedRequest || !hasRewardedCapability()) {
       return finalizeGameOver();
     }
-    state = "revive-offer";
+    if (setGameState("revive-offer")) markSaveDirty();
     reviveOfferActive = true;
     reviveOfferRemaining = REVIVE_OFFER_DURATION;
     if (reviveOfferCountdown) reviveOfferCountdown.textContent = reviveOfferRemaining.toFixed(1);
@@ -1399,7 +1460,8 @@
     gameOverFinalized = true;
     reviveOfferActive = false;
     reviveOfferRemaining = 0;
-    state = "gameover";
+    const activeTimeChanged = setGameState("gameover");
+    if (activeTimeChanged) markSaveDirty();
     airborneTime = 0;
     ball.angularVelocity = 0;
     const previousBest = best;
@@ -1447,7 +1509,7 @@
     placeBallInHoop(currentHoop);
     ball.scoredHoopId = currentHoopId;
     setHoopRoles(currentHoopId, targetHoopId);
-    state = "playing";
+    setGameState("playing");
     reviveOfferOverlay?.classList.remove("active");
     retryOverlay.classList.remove("active");
     gameOverOverlay.classList.remove("active");
@@ -1479,7 +1541,7 @@
     placeBallInHoop(startHoop);
     ball.scoredHoopId = startHoop.id;
     setHoopRoles(currentHoopId, targetHoopId);
-    state = "playing";
+    setGameState("playing");
     gameOverOverlay.classList.remove("active");
     retryOverlay.classList.remove("active");
     playGameSound("retry");
@@ -1877,6 +1939,7 @@
     if (!activeCoin) return false;
     activeCoin = null;
     coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + 1);
+    stats.worldCoinsCollected = addSafeStat(stats.worldCoinsCollected, 1);
     scheduleNextCoin();
     coinFeedback = {
       x: position.x,
@@ -2301,7 +2364,7 @@
 
   function showRetry() {
     if (state !== "playing" || ball.held) return;
-    state = "retry";
+    if (setGameState("retry")) markSaveDirty();
     drag = null;
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
@@ -2321,7 +2384,7 @@
     swishStreak = 0;
     perfectChain = 0;
     placeBallInHoop(currentHoop);
-    state = "playing";
+    setGameState("playing");
     retryOverlay.classList.remove("active");
     retryButton.blur();
   }
@@ -2486,6 +2549,8 @@
     lastWasPerfect = wasPerfect;
     lastWasBounce = usedWall;
     score += lastScoreGain;
+    recordBasketStats(wasPerfect, usedWall, lastScoreGain);
+    schedulePlatformSave();
     if (
       highScoreCelebration.eligibleThisRun
       && !highScoreCelebration.hasCelebratedThisRun
@@ -3665,6 +3730,50 @@
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.tr[key] || key;
   }
 
+  function createDefaultStats() {
+    return {
+      activePlayTimeMs: 0,
+      lifetimeScore: 0,
+      perfectBaskets: 0,
+      bounceBaskets: 0,
+      worldCoinsCollected: 0
+    };
+  }
+
+  function normalizeStatValue(value) {
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+  }
+
+  function normalizeStats(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return {
+      activePlayTimeMs: normalizeStatValue(source.activePlayTimeMs),
+      lifetimeScore: normalizeStatValue(source.lifetimeScore),
+      perfectBaskets: normalizeStatValue(source.perfectBaskets),
+      bounceBaskets: normalizeStatValue(source.bounceBaskets),
+      worldCoinsCollected: normalizeStatValue(source.worldCoinsCollected)
+    };
+  }
+
+  function hasCanonicalStats(value, normalized) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const keys = Object.keys(createDefaultStats());
+    return Object.keys(value).length === keys.length
+      && keys.every((key) => value[key] === normalized[key]);
+  }
+
+  function addSafeStat(current, increment) {
+    const normalizedCurrent = normalizeStatValue(current);
+    const normalizedIncrement = normalizeStatValue(increment);
+    return Math.min(Number.MAX_SAFE_INTEGER, normalizedCurrent + normalizedIncrement);
+  }
+
+  function recordBasketStats(wasPerfect, usedWall, scoreGain) {
+    stats.lifetimeScore = addSafeStat(stats.lifetimeScore, scoreGain);
+    if (wasPerfect) stats.perfectBaskets = addSafeStat(stats.perfectBaskets, 1);
+    if (usedWall) stats.bounceBaskets = addSafeStat(stats.bounceBaskets, 1);
+  }
+
   function normalizeCoins(value) {
     return Number.isSafeInteger(value) && value >= 0 ? value : 0;
   }
@@ -3692,13 +3801,16 @@
       : source || {};
     const savedScore = source ? Number(source.highScore) : 0;
     const highScore = Number.isSafeInteger(savedScore) && savedScore >= 0 ? savedScore : 0;
-    const normalizedCoins = version >= SAVE_VERSION ? normalizeCoins(source?.coins) : 0;
+    const normalizedCoins = version >= ECONOMY_SAVE_VERSION ? normalizeCoins(source?.coins) : 0;
+    const normalizedStats = version >= STATS_SAVE_VERSION
+      ? normalizeStats(source?.stats)
+      : createDefaultStats();
     let ballSkin = normalizeBallSkinId(settings.ballSkin);
     let theme = THEMES[settings.theme] ? settings.theme : "gym";
-    const balls = version >= SAVE_VERSION
+    const balls = version >= ECONOMY_SAVE_VERSION
       ? normalizeOwnedIds(source?.ownedBallSkins, BALL_SKINS, "classic")
       : new Set(["classic", ballSkin]);
-    const themes = version >= SAVE_VERSION
+    const themes = version >= ECONOMY_SAVE_VERSION
       ? normalizeOwnedIds(source?.ownedThemes, THEMES, "gym")
       : new Set(["gym", theme]);
 
@@ -3716,6 +3828,7 @@
       version !== SAVE_VERSION
       || highScore !== source.highScore
       || normalizedCoins !== source.coins
+      || !hasCanonicalStats(source.stats, normalizedStats)
       || !hasCanonicalOwnedIds(source.ownedBallSkins, balls, BALL_SKINS)
       || !hasCanonicalOwnedIds(source.ownedThemes, themes, THEMES)
       || settings.ballSkin !== ballSkin
@@ -3727,6 +3840,7 @@
     return {
       highScore,
       coins: normalizedCoins,
+      stats: normalizedStats,
       ownedBallSkins: balls,
       ownedThemes: themes,
       darkMode: typeof settings.darkMode === "boolean" ? settings.darkMode : false,
@@ -3741,6 +3855,7 @@
   function applyMigratedSave(migrated) {
     best = migrated.highScore;
     coins = migrated.coins;
+    stats = migrated.stats;
     ownedBallSkins = migrated.ownedBallSkins;
     ownedThemes = migrated.ownedThemes;
     darkMode = migrated.darkMode;
@@ -3840,6 +3955,7 @@
   }
 
   function makeSaveObject(forPlayables) {
+    commitActivePlaySegment({ keepRunning: canAccumulateActivePlayTime() });
     const settings = {
       darkMode: Boolean(darkMode),
       muted: Boolean(muted),
@@ -3851,6 +3967,7 @@
       version: SAVE_VERSION,
       highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
       coins: normalizeCoins(coins),
+      stats: normalizeStats(stats),
       ownedBallSkins: Object.keys(BALL_SKINS).filter((id) => ownedBallSkins.has(id)),
       ownedThemes: Object.keys(THEMES).filter((id) => ownedThemes.has(id)),
       settings
@@ -3861,10 +3978,15 @@
     return JSON.stringify(makeSaveObject(isPlayablesEnv));
   }
 
-  function requestSave(immediate) {
+  function markSaveDirty() {
     if (!persistenceReady) return;
     saveRevision += 1;
     saveDirty = true;
+  }
+
+  function requestSave(immediate) {
+    if (!persistenceReady) return;
+    markSaveDirty();
     if (immediate) {
       if (cloudSaveTimer !== null) window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
@@ -3928,6 +4050,7 @@
 
   function flushPlatformSave() {
     if (!persistenceReady) return Promise.resolve(false);
+    if (commitActivePlaySegment({ keepRunning: canAccumulateActivePlayTime() })) markSaveDirty();
     if (cloudSaveTimer !== null) {
       window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
@@ -3971,6 +4094,24 @@
     return invalidSave || migrated.needsMigration;
   }
 
+  function formatActivePlayTime(value) {
+    const totalSeconds = Math.floor(normalizeStatValue(value) / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
+  }
+
+  function renderProfile() {
+    if (!activePlayTimeValue) return;
+    const normalized = normalizeStats(stats);
+    activePlayTimeValue.textContent = formatActivePlayTime(normalized.activePlayTimeMs);
+    perfectBasketsValue.textContent = String(normalized.perfectBaskets);
+    bounceBasketsValue.textContent = String(normalized.bounceBaskets);
+    lifetimeScoreValue.textContent = String(normalized.lifetimeScore);
+    worldCoinsCollectedValue.textContent = String(normalized.worldCoinsCollected);
+  }
+
   function applyDarkMode() {
     document.body.classList.toggle("dark-mode", darkMode);
     themeColor.setAttribute("content", darkMode ? "#101923" : "#f7f3e8");
@@ -3992,6 +4133,7 @@
     if (state === "gameover") finalScore.textContent = t("score") + " " + score;
     clearEconomyStatus("ball");
     clearEconomyStatus("theme");
+    renderProfile();
     syncEconomyBalances();
     renderBallCustomizer();
     renderThemeCustomizer();
@@ -4376,19 +4518,17 @@
     const soundEnabled = !muted && platformAudioEnabled;
     const enabledLabel = darkMode ? t("on") : t("off");
     const darkLabel = t("darkMode") + ": " + enabledLabel;
-    soundButton.setAttribute("aria-pressed", String(soundEnabled));
-    soundButton.textContent = muted ? t("muted") : t("sound");
     settingsSoundButton.setAttribute("aria-pressed", String(soundEnabled));
     settingsSoundButton.textContent = t("sound") + ": " + (soundEnabled ? t("on") : t("off"));
     settingsDarkModeButton.setAttribute("aria-pressed", String(darkMode));
     settingsDarkModeButton.textContent = darkLabel;
     languageButton.textContent = t("language") + ": " + (language === "tr" ? t("turkish") : t("english"));
-    menuButton.textContent = userPaused && state === "paused" ? t("continue") : t("menu");
+    menuButton.textContent = t("menu");
     menuButton.setAttribute("aria-label", menuButton.textContent);
   }
 
   function syncUiState() {
-    const hideHud = state === "menu" || state === "settings" || state === "customize" || state === "theme" || state === "pause-settings";
+    const hideHud = state === "menu" || state === "profile" || state === "settings" || state === "customize" || state === "theme" || state === "pause-settings";
     hud.classList.toggle("hidden", hideHud);
     hud.classList.toggle("pauseActive", state === "paused");
     syncControlLabels();
@@ -4398,14 +4538,17 @@
     if (!platformReady || platformPaused) return;
     ensureAudio();
     playGameSound("button");
-    state = panelName;
+    setGameState(panelName);
     settingsOrigin = "menu";
     if (panelName === "customize") {
       renderBallCustomizer();
     } else if (panelName === "theme") {
       renderThemeCustomizer();
+    } else if (panelName === "profile") {
+      renderProfile();
     }
     mainMenuOverlay.classList.remove("active");
+    profileOverlay.classList.toggle("active", panelName === "profile");
     settingsOverlay.classList.toggle("active", panelName === "settings");
     customizeOverlay.classList.toggle("active", panelName === "customize");
     themeOverlay?.classList.toggle("active", panelName === "theme");
@@ -4416,7 +4559,8 @@
     if (!platformReady || platformPaused) return;
     ensureAudio();
     playGameSound("button");
-    state = "menu";
+    setGameState("menu");
+    profileOverlay.classList.remove("active");
     settingsOverlay.classList.remove("active");
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
@@ -4430,7 +4574,7 @@
     playGameSound("button");
     userPaused = true;
     settingsOrigin = "pause";
-    state = "paused";
+    const activeTimeChanged = setGameState("paused");
     drag = null;
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
@@ -4441,12 +4585,13 @@
     pauseOverlay.classList.add("active");
     settingsOverlay.classList.remove("active");
     syncUiState();
+    if (activeTimeChanged) schedulePlatformSave();
   }
 
   function resumePausedGame() {
     if (!platformReady || platformPaused || !userPaused || state !== "paused") return;
     userPaused = false;
-    state = "playing";
+    setGameState("playing");
     pauseOverlay.classList.remove("active");
     syncUiState();
     if (platformAudioEnabled && !muted && audioContext) audioContext.resume().catch(() => {});
@@ -4455,7 +4600,7 @@
 
   function openPauseSettings() {
     if (!userPaused || state !== "paused" || platformPaused) return;
-    state = "pause-settings";
+    setGameState("pause-settings");
     settingsOrigin = "pause";
     pauseOverlay.classList.remove("active");
     settingsOverlay.classList.add("active");
@@ -4465,7 +4610,7 @@
   function closeSettings() {
     if (!platformReady || platformPaused) return;
     if (settingsOrigin === "pause" && userPaused) {
-      state = "paused";
+      setGameState("paused");
       settingsOverlay.classList.remove("active");
       pauseOverlay.classList.add("active");
       syncUiState();
@@ -4474,21 +4619,18 @@
     returnToMainMenu();
   }
 
-  function toggleGameplayPause() {
-    if (state === "playing") pauseGameplay();
-    else if (state === "paused") resumePausedGame();
-  }
-
   function exitGameplayToMainMenu() {
     if (!platformReady || platformPaused) return;
     ensureAudio();
     playGameSound("button");
     flushScoreSubmission();
+    if (stopActivePlayClock()) markSaveDirty();
     userPaused = false;
     pauseOverlay.classList.remove("active");
     settingsOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
     resetGame(true);
+    void flushPlatformSave();
     restartAnimationLoop();
   }
 
@@ -4533,6 +4675,7 @@
 
   function handlePlatformPause() {
     if (platformPaused) return;
+    if (stopActivePlayClock()) markSaveDirty();
     platformPaused = true;
     gameShell.inert = true;
     drag = null;
@@ -4551,6 +4694,7 @@
     if (!platformPaused) return;
     platformPaused = false;
     gameShell.inert = false;
+    startActivePlayClock();
     if (platformAudioEnabled && !muted && !userPaused && audioContext) audioContext.resume().catch(() => {});
     processDeferredRewardedRequest();
     syncRewardedUi();
@@ -4654,6 +4798,7 @@
   canvas.addEventListener("pointercancel", onPointerCancel);
 
   startButton.addEventListener("click", startGame);
+  profileButton.addEventListener("click", () => openMenuPanel("profile"));
   customizeButton.addEventListener("click", () => openMenuPanel("customize"));
   if (customizeThemeButton) customizeThemeButton.addEventListener("click", () => openMenuPanel("theme"));
   settingsButton.addEventListener("click", () => openMenuPanel("settings"));
@@ -4661,13 +4806,15 @@
   settingsDarkModeButton.addEventListener("click", toggleDarkMode);
   languageButton.addEventListener("click", toggleLanguage);
   settingsBackButton.addEventListener("click", closeSettings);
+  profileBackButton.addEventListener("click", returnToMainMenu);
   customizeBackButton.addEventListener("click", returnToMainMenu);
   if (themeBackButton) themeBackButton.addEventListener("click", returnToMainMenu);
   ballRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("ball"));
   themeRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("theme"));
   reviveRewardButton?.addEventListener("click", requestRewardedContinue);
   reviveFinishButton?.addEventListener("click", declineReviveOffer);
-  menuButton.addEventListener("click", toggleGameplayPause);
+  menuButton.addEventListener("click", pauseGameplay);
+  pauseContinueButton.addEventListener("click", resumePausedGame);
   pauseMainMenuButton.addEventListener("click", exitGameplayToMainMenu);
   pauseSettingsButton.addEventListener("click", openPauseSettings);
   gameOverMenuButton.addEventListener("click", exitGameplayToMainMenu);
@@ -4684,8 +4831,6 @@
     retryShot();
     playGameSound("retry");
   });
-  soundButton.addEventListener("click", toggleSound);
-
   window.addEventListener("keydown", (event) => {
     if (!platformReady || platformPaused) return;
     if (event.key === " " && state === "menu") startGame();
@@ -4700,6 +4845,7 @@
     if (event.key === "Escape" && state === "paused") resumePausedGame();
     if (event.key === "Escape" && state === "pause-settings") closeSettings();
     if (event.key === "Escape" && state === "settings") closeSettings();
+    if (event.key === "Escape" && state === "profile") returnToMainMenu();
     if (event.key === "Escape" && state === "customize") returnToMainMenu();
     if (event.key === "Escape" && state === "theme") returnToMainMenu();
   });
