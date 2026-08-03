@@ -229,6 +229,30 @@
     })
   });
 
+  const BALL_SKIN_DISPLAY_ORDER = Object.freeze([
+    "classic",
+    "inverted",
+    "watermelon",
+    "magma",
+    "toxic",
+    "bloodMoon",
+    "zebra",
+    "earth",
+    "cyberpunk",
+    "neon",
+    "gold",
+    "ghost",
+    "matrix",
+    "sun"
+  ]);
+  const THEME_DISPLAY_ORDER = Object.freeze([
+    "gym",
+    "sunset",
+    "rooftop",
+    "minimal",
+    "neon"
+  ]);
+
   const BALL_EFFECT_PRESETS = {
     classic: {
       perfectStyle: "starBurst",
@@ -4537,7 +4561,9 @@
     customizeBallName.textContent = t(selectedSkin.nameKey);
     ballSkinList.replaceChildren();
 
-    for (const skin of Object.values(BALL_SKINS)) {
+    for (const skinId of BALL_SKIN_DISPLAY_ORDER) {
+      const skin = BALL_SKINS[skinId];
+      if (!skin) continue;
       const option = document.createElement("button");
       const isSelected = skin.id === selectedBallSkinId;
       const isOwned = ownedBallSkins.has(skin.id);
@@ -4573,7 +4599,9 @@
     syncEconomyBalances();
     themeList.replaceChildren();
 
-    for (const theme of Object.values(THEMES)) {
+    for (const themeId of THEME_DISPLAY_ORDER) {
+      const theme = THEMES[themeId];
+      if (!theme) continue;
       const option = document.createElement("button");
       const isSelected = theme.id === selectedThemeId;
       const isOwned = ownedThemes.has(theme.id);
