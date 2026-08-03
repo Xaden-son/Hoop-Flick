@@ -5,6 +5,7 @@
   const ctx = canvas.getContext("2d", { alpha: true });
   const gameShell = document.getElementById("gameShell");
   const mainMenuOverlay = document.getElementById("mainMenuOverlay");
+  const profileOverlay = document.getElementById("profileOverlay");
   const settingsOverlay = document.getElementById("settingsOverlay");
   const customizeOverlay = document.getElementById("customizeOverlay");
   const themeOverlay = document.getElementById("themeOverlay");
@@ -14,6 +15,7 @@
   const hud = document.getElementById("hud");
   const themeColor = document.getElementById("themeColor");
   const startButton = document.getElementById("startButton");
+  const profileButton = document.getElementById("profileButton");
   const customizeButton = document.getElementById("customizeButton");
   const customizeThemeButton = document.getElementById("customizeThemeButton");
   const settingsButton = document.getElementById("settingsButton");
@@ -21,8 +23,10 @@
   const settingsDarkModeButton = document.getElementById("settingsDarkModeButton");
   const languageButton = document.getElementById("languageButton");
   const settingsBackButton = document.getElementById("settingsBackButton");
+  const profileBackButton = document.getElementById("profileBackButton");
   const customizeBackButton = document.getElementById("customizeBackButton");
   const themeBackButton = document.getElementById("themeBackButton");
+  const pauseContinueButton = document.getElementById("pauseContinueButton");
   const pauseMainMenuButton = document.getElementById("pauseMainMenuButton");
   const pauseSettingsButton = document.getElementById("pauseSettingsButton");
   const customizeBallPreview = document.getElementById("customizeBallPreview");
@@ -42,12 +46,18 @@
   const retryButton = document.getElementById("retryButton");
   const retryMenuButton = document.getElementById("retryMenuButton");
   const menuButton = document.getElementById("menuButton");
-  const soundButton = document.getElementById("soundButton");
   const scoreValue = document.getElementById("scoreValue");
   const bestValue = document.getElementById("bestValue");
   const finalScore = document.getElementById("finalScore");
   const coinHud = document.getElementById("coinHud");
   const coinHudValue = document.getElementById("coinHudValue");
+  const timedShotHud = document.getElementById("timedShotHud");
+  const timedShotValue = document.getElementById("timedShotValue");
+  const activePlayTimeValue = document.getElementById("activePlayTimeValue");
+  const perfectBasketsValue = document.getElementById("perfectBasketsValue");
+  const bounceBasketsValue = document.getElementById("bounceBasketsValue");
+  const lifetimeScoreValue = document.getElementById("lifetimeScoreValue");
+  const worldCoinsCollectedValue = document.getElementById("worldCoinsCollectedValue");
   const reviveOfferOverlay = document.getElementById("reviveOfferOverlay");
   const reviveOfferCountdown = document.getElementById("reviveOfferCountdown");
   const reviveOfferStatus = document.getElementById("reviveOfferStatus");
@@ -61,7 +71,9 @@
   const BALL_SKIN_KEY = "hoop-flick-ball-skin";
   const THEME_KEY = "hoop-flick-theme";
   const LOCAL_SAVE_KEY = "hoop-flick-save-v4";
-  const SAVE_VERSION = 4;
+  const SAVE_VERSION = 5;
+  const ECONOMY_SAVE_VERSION = 4;
+  const STATS_SAVE_VERSION = 5;
   const WORLD_W = 420;
   const WORLD_H = 746;
   const START_HOOP_BOTTOM_OFFSET = 183;
@@ -93,6 +105,13 @@
   const NET_REST_Y = 30;
   const BALL_SETTLE_DURATION = 0.24;
   const BALL_SETTLE_INPUT_DELAY = 0.1;
+  const TIMED_SHOT_START_SCORE = 100;
+  const TIMED_SHOT_MAX_SECONDS = 12;
+  const TIMED_SHOT_MIN_SECONDS = 3;
+  const TIMED_SHOT_SCORE_STEP = 40;
+  const TIMED_SHOT_INTERVAL_MIN = 4;
+  const TIMED_SHOT_INTERVAL_MAX = 6;
+  const TIMED_SHOT_TICK_THRESHOLDS = Object.freeze([5, 4, 3, 2, 1]);
   const NET_ANIMATION_DURATION = 0.56;
   const HOOP_RELEASE_DURATION = 0.34;
   const HOOP_SPAWN_DURATION = 0.36;
@@ -187,28 +206,52 @@
   const ECONOMY_PRICES = Object.freeze({
     ball: Object.freeze({
       classic: 0,
-      inverted: 20,
-      neon: 30,
-      watermelon: 40,
-      magma: 50,
-      gold: 60,
-      ghost: 75,
-      toxic: 90,
-      matrix: 110,
+      inverted: 50,
+      neon: 60,
+      watermelon: 75,
+      magma: 90,
+      gold: 100,
+      ghost: 100,
+      toxic: 120,
+      matrix: 100,
       earth: 130,
       cyberpunk: 150,
       bloodMoon: 175,
       zebra: 200,
-      sun: 225
+      sun: 100
     }),
     theme: Object.freeze({
       gym: 0,
-      sunset: 100,
-      neon: 225,
-      rooftop: 75,
-      minimal: 125
+      sunset: 150,
+      neon: 300,
+      rooftop: 175,
+      minimal: 200,
     })
   });
+
+  const BALL_SKIN_DISPLAY_ORDER = Object.freeze([
+    "classic",
+    "inverted",
+    "watermelon",
+    "magma",
+    "toxic",
+    "bloodMoon",
+    "zebra",
+    "earth",
+    "cyberpunk",
+    "neon",
+    "gold",
+    "ghost",
+    "matrix",
+    "sun"
+  ]);
+  const THEME_DISPLAY_ORDER = Object.freeze([
+    "gym",
+    "sunset",
+    "rooftop",
+    "minimal",
+    "neon"
+  ]);
 
   const BALL_EFFECT_PRESETS = {
     classic: {
@@ -917,6 +960,12 @@
       arcadeEyebrow: "ARCADE BASKETBOL",
       tagline: "Çek, bırak ve yükselmeye devam et.",
       play: "Oyna",
+      profile: "Profil",
+      activePlayTime: "Aktif Oynama Süresi",
+      perfectBaskets: "Deliksiz Atışlar",
+      bounceBaskets: "Duvardan Atışlar",
+      lifetimeScore: "Toplam Skor",
+      worldCoinsCollected: "Toplanan Dünya Coinleri",
       customize: "Topu Özelleştir",
       customizeTheme: "Temayı Özelleştir",
       settings: "Ayarlar",
@@ -973,16 +1022,17 @@
       returnMainMenu: "Ana Menüye Dön",
       paused: "Duraklatıldı",
       pauseEyebrow: "OYUN DURAKLATILDI",
-      pauseHint: "Devam etmek için sağ üstteki Devam düğmesine bas.",
-      continue: "Devam",
+      pauseHint: "Oyuna dönmek için Devam Et düğmesine bas.",
+      continue: "Devam Et",
       ballStuck: "Top Sıkıştı mı?",
       retryText: "Son hoop'a dön ve oynamaya devam et.",
       retry: "Tekrar Dene",
       score: "Skor",
       best: "En İyi",
       menu: "Menü",
+      shot: "ATIŞ",
+      shotTimeRemaining: "Atış için {seconds} saniye kaldı",
       sound: "Ses",
-      muted: "Sessiz",
       darkMode: "Karanlık Mod",
       language: "Dil",
       turkish: "Türkçe",
@@ -1000,6 +1050,12 @@
       arcadeEyebrow: "ARCADE BASKETBALL",
       tagline: "Drag, release, and keep climbing.",
       play: "Play",
+      profile: "Profile",
+      activePlayTime: "Active Play Time",
+      perfectBaskets: "Perfect Baskets",
+      bounceBaskets: "Bounce Baskets",
+      lifetimeScore: "Lifetime Score",
+      worldCoinsCollected: "World Coins Collected",
       customize: "Customize Ball",
       customizeTheme: "Customize Theme",
       settings: "Settings",
@@ -1056,7 +1112,7 @@
       returnMainMenu: "Return to Main Menu",
       paused: "Paused",
       pauseEyebrow: "GAME PAUSED",
-      pauseHint: "Press Continue in the top-right corner to resume.",
+      pauseHint: "Press Continue to return to the game.",
       continue: "Continue",
       ballStuck: "Ball Stuck?",
       retryText: "Return to your last hoop and keep playing.",
@@ -1064,8 +1120,9 @@
       score: "Score",
       best: "Best",
       menu: "Menu",
+      shot: "SHOT",
+      shotTimeRemaining: "{seconds} seconds remaining to shoot",
       sound: "Sound",
-      muted: "Muted",
       darkMode: "Dark Mode",
       language: "Language",
       turkish: "Turkish",
@@ -1117,6 +1174,8 @@
   let darkMode = readBooleanPreference(DARK_MODE_KEY, false);
   let language = readLanguagePreference();
   let state = "menu";
+  let stats = createDefaultStats();
+  let activePlaySegmentStartedAt = null;
   let score = 0;
   let best = readBestScore();
   let runStartBestScore = best;
@@ -1140,6 +1199,15 @@
   let coinTargetsRemaining = COIN_INTERVAL_MIN;
   let coinSpawnDue = false;
   let coinFeedback = null;
+  let timedShotOpportunitiesRemaining = TIMED_SHOT_INTERVAL_MIN;
+  let timedShotOpportunityProcessed = true;
+  let timedShotFirstChallengeStarted = false;
+  let timedShotActive = false;
+  let timedShotAwaitingShotResult = false;
+  let timedShotRemainingSeconds = 0;
+  let timedShotInitialSeconds = 0;
+  let timedShotTickMask = 0;
+  let timedShotLastDisplayedSecond = null;
   let rewardedRequest = null;
   let rewardedRequestSequence = 0;
   let reviveUsed = false;
@@ -1210,6 +1278,44 @@
     if (userPaused) draw();
   }
 
+  function canAccumulateActivePlayTime() {
+    return platformReady && !platformPaused && !userPaused && state === "playing";
+  }
+
+  function startActivePlayClock(now) {
+    if (activePlaySegmentStartedAt !== null || !canAccumulateActivePlayTime()) return false;
+    const timestamp = Number.isFinite(now) ? now : performance.now();
+    activePlaySegmentStartedAt = timestamp;
+    return true;
+  }
+
+  function commitActivePlaySegment(options) {
+    if (activePlaySegmentStartedAt === null) return false;
+    const config = options || {};
+    const timestamp = Number.isFinite(config.now) ? config.now : performance.now();
+    const elapsedMs = Math.max(0, Math.floor(timestamp - activePlaySegmentStartedAt));
+    const keepRunning = Boolean(config.keepRunning) && canAccumulateActivePlayTime();
+    activePlaySegmentStartedAt = keepRunning ? timestamp : null;
+    if (elapsedMs <= 0) return false;
+    stats.activePlayTimeMs = addSafeStat(stats.activePlayTimeMs, elapsedMs);
+    return true;
+  }
+
+  function stopActivePlayClock(now) {
+    return commitActivePlaySegment({ now, keepRunning: false });
+  }
+
+  function setGameState(nextState) {
+    if (state === nextState) {
+      startActivePlayClock();
+      return false;
+    }
+    const activeTimeChanged = state === "playing" ? stopActivePlayClock() : false;
+    state = nextState;
+    startActivePlayClock();
+    return activeTimeChanged;
+  }
+
   function resetGame(toMenu) {
     userPaused = false;
     settingsOrigin = "menu";
@@ -1241,6 +1347,7 @@
     particles = [];
     shotRings = [];
     resetCoinRun();
+    resetTimedShotRun();
     reviveUsed = false;
     gameOverFinalized = false;
     reviveOfferRemaining = 0;
@@ -1262,8 +1369,9 @@
     placeBallInHoop(hoops[0]);
     ball.scoredHoopId = hoops[0].id;
     updateScore();
-    state = toMenu ? "menu" : "playing";
+    setGameState(toMenu ? "menu" : "playing");
     mainMenuOverlay.classList.toggle("active", state === "menu");
+    profileOverlay.classList.remove("active");
     settingsOverlay.classList.remove("active");
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
@@ -1364,6 +1472,7 @@
 
   function beginGameOver() {
     if (gameOverFinalized || state === "revive-offer") return false;
+    consumeTimedShotChallenge();
     airborneTime = 0;
     ball.angularVelocity = 0;
     drag = null;
@@ -1381,7 +1490,7 @@
     if (score <= 0 || gameOverFinalized || reviveUsed || rewardedRequest || !hasRewardedCapability()) {
       return finalizeGameOver();
     }
-    state = "revive-offer";
+    if (setGameState("revive-offer")) markSaveDirty();
     reviveOfferActive = true;
     reviveOfferRemaining = REVIVE_OFFER_DURATION;
     if (reviveOfferCountdown) reviveOfferCountdown.textContent = reviveOfferRemaining.toFixed(1);
@@ -1399,7 +1508,8 @@
     gameOverFinalized = true;
     reviveOfferActive = false;
     reviveOfferRemaining = 0;
-    state = "gameover";
+    const activeTimeChanged = setGameState("gameover");
+    if (activeTimeChanged) markSaveDirty();
     airborneTime = 0;
     ball.angularVelocity = 0;
     const previousBest = best;
@@ -1447,7 +1557,7 @@
     placeBallInHoop(currentHoop);
     ball.scoredHoopId = currentHoopId;
     setHoopRoles(currentHoopId, targetHoopId);
-    state = "playing";
+    setGameState("playing");
     reviveOfferOverlay?.classList.remove("active");
     retryOverlay.classList.remove("active");
     gameOverOverlay.classList.remove("active");
@@ -1479,7 +1589,7 @@
     placeBallInHoop(startHoop);
     ball.scoredHoopId = startHoop.id;
     setHoopRoles(currentHoopId, targetHoopId);
-    state = "playing";
+    setGameState("playing");
     gameOverOverlay.classList.remove("active");
     retryOverlay.classList.remove("active");
     playGameSound("retry");
@@ -1877,6 +1987,7 @@
     if (!activeCoin) return false;
     activeCoin = null;
     coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + 1);
+    stats.worldCoinsCollected = addSafeStat(stats.worldCoinsCollected, 1);
     scheduleNextCoin();
     coinFeedback = {
       x: position.x,
@@ -2056,6 +2167,138 @@
     };
   }
 
+  function rollTimedShotOpportunityInterval() {
+    return Math.floor(random(TIMED_SHOT_INTERVAL_MIN, TIMED_SHOT_INTERVAL_MAX + 1));
+  }
+
+  function getTimedShotDuration(scoreValue) {
+    const scoreSteps = Math.floor((Math.max(TIMED_SHOT_START_SCORE, scoreValue) - TIMED_SHOT_START_SCORE) / TIMED_SHOT_SCORE_STEP);
+    return clamp(TIMED_SHOT_MAX_SECONDS - scoreSteps, TIMED_SHOT_MIN_SECONDS, TIMED_SHOT_MAX_SECONDS);
+  }
+
+  function hideTimedShotHud() {
+    timedShotLastDisplayedSecond = null;
+    if (!timedShotHud) return;
+    timedShotHud.hidden = true;
+    timedShotHud.classList.remove("warning", "critical");
+    timedShotHud.removeAttribute("aria-label");
+  }
+
+  function syncTimedShotHud(force) {
+    if (!timedShotHud || !timedShotValue) return;
+    if (!timedShotActive) {
+      hideTimedShotHud();
+      return;
+    }
+
+    const displaySeconds = Math.max(0, Math.ceil(timedShotRemainingSeconds));
+    timedShotHud.hidden = false;
+    if (!force && displaySeconds === timedShotLastDisplayedSecond) return;
+
+    timedShotLastDisplayedSecond = displaySeconds;
+    timedShotHud.classList.toggle("warning", displaySeconds <= 5 && displaySeconds > 3);
+    timedShotHud.classList.toggle("critical", displaySeconds <= 3);
+    timedShotValue.textContent = String(displaySeconds);
+    timedShotHud.setAttribute(
+      "aria-label",
+      t("shotTimeRemaining").replace("{seconds}", String(displaySeconds))
+    );
+  }
+
+  function resetTimedShotRun() {
+    timedShotOpportunitiesRemaining = rollTimedShotOpportunityInterval();
+    timedShotOpportunityProcessed = true;
+    timedShotFirstChallengeStarted = false;
+    timedShotActive = false;
+    timedShotAwaitingShotResult = false;
+    timedShotRemainingSeconds = 0;
+    timedShotInitialSeconds = 0;
+    timedShotTickMask = 0;
+    hideTimedShotHud();
+  }
+
+  function startTimedShotChallenge() {
+    if (timedShotActive || state !== "playing" || score < TIMED_SHOT_START_SCORE) return false;
+    timedShotInitialSeconds = getTimedShotDuration(score);
+    timedShotRemainingSeconds = timedShotInitialSeconds;
+    timedShotTickMask = 0;
+    timedShotLastDisplayedSecond = null;
+    timedShotActive = true;
+    timedShotAwaitingShotResult = false;
+    syncTimedShotHud(true);
+    return true;
+  }
+
+  function processTimedShotOpportunity() {
+    if (timedShotOpportunityProcessed) return false;
+    timedShotOpportunityProcessed = true;
+    if (timedShotActive || score < TIMED_SHOT_START_SCORE) return false;
+
+    if (!timedShotFirstChallengeStarted) {
+      const started = startTimedShotChallenge();
+      if (started) timedShotFirstChallengeStarted = true;
+      return started;
+    }
+
+    timedShotOpportunitiesRemaining = Math.max(0, timedShotOpportunitiesRemaining - 1);
+    if (timedShotOpportunitiesRemaining > 0) return false;
+    return startTimedShotChallenge();
+  }
+
+  function consumeTimedShotChallenge() {
+    if (!timedShotActive) return false;
+    timedShotActive = false;
+    timedShotAwaitingShotResult = false;
+    timedShotRemainingSeconds = 0;
+    timedShotInitialSeconds = 0;
+    timedShotTickMask = 0;
+    timedShotOpportunitiesRemaining = rollTimedShotOpportunityInterval();
+    hideTimedShotHud();
+    return true;
+  }
+
+  function playTimedShotTick(seconds) {
+    try {
+      playGameSound("countdownTick", { seconds });
+    } catch (error) {
+      // Procedural audio is optional and must never block the countdown.
+    }
+  }
+
+  function consumeCrossedTimedShotTicks(previousSeconds, nextSeconds) {
+    let lowestCrossedThreshold = null;
+    for (let index = 0; index < TIMED_SHOT_TICK_THRESHOLDS.length; index += 1) {
+      const threshold = TIMED_SHOT_TICK_THRESHOLDS[index];
+      const bit = 1 << index;
+      if ((timedShotTickMask & bit) !== 0) continue;
+      if (previousSeconds > threshold && nextSeconds <= threshold) {
+        timedShotTickMask |= bit;
+        lowestCrossedThreshold = threshold;
+      }
+    }
+    if (lowestCrossedThreshold !== null) playTimedShotTick(lowestCrossedThreshold);
+  }
+
+  function updateTimedShotCountdown(dt) {
+    if (!timedShotActive || timedShotAwaitingShotResult) return false;
+    const previousSeconds = timedShotRemainingSeconds;
+    const elapsedSeconds = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+    timedShotRemainingSeconds = Math.max(0, previousSeconds - elapsedSeconds);
+    consumeCrossedTimedShotTicks(previousSeconds, timedShotRemainingSeconds);
+    syncTimedShotHud(false);
+    if (timedShotRemainingSeconds > 0) return false;
+
+    if (!ball.held && !ball.settle) {
+      timedShotAwaitingShotResult = true;
+      return false;
+    }
+
+    consumeTimedShotChallenge();
+    clearPointerDrag(activePointer);
+    beginGameOver();
+    return true;
+  }
+
   function update(dt) {
     if (state === "revive-offer") {
       updateReviveOffer(dt);
@@ -2071,6 +2314,7 @@
     }
 
     if (state === "playing") {
+      if (updateTimedShotCountdown(dt)) return;
       simulationTime += dt;
       for (const hoop of hoops) {
         if (hoop.role !== HOOP_ROLE.INACTIVE && hoop.moving) {
@@ -2157,13 +2401,15 @@
 
     updateLaunchHoopSafety();
     detectHoopState();
+    if (state !== "playing") return;
     if (!ball.held && !ball.settle) collideHoops();
 
     if (!ball.settle && ball.y - cameraY > WORLD_H + 90) {
       if (!hasReachedSecondHoop && currentHoopId === 0) recoverFirstTransition();
       else beginGameOver();
     } else if (!ball.settle && !ball.held && airborneTime >= AIRBORNE_RETRY_DELAY) {
-      showRetry();
+      if (timedShotAwaitingShotResult) beginGameOver();
+      else showRetry();
     }
   }
 
@@ -2201,6 +2447,7 @@
     ball.vy = 0;
     ball.angularVelocity = 0;
     ball.held = false;
+    timedShotOpportunityProcessed = false;
     ball.settle = {
       hoopId: hoop.id,
       elapsed: 0,
@@ -2219,7 +2466,9 @@
       return;
     }
 
+    const wasAimReady = settle.elapsed >= BALL_SETTLE_INPUT_DELAY;
     settle.elapsed += dt;
+    if (!wasAimReady && settle.elapsed >= BALL_SETTLE_INPUT_DELAY) processTimedShotOpportunity();
     const progress = clamp(settle.elapsed / BALL_SETTLE_DURATION, 0, 1);
     const eased = progress * progress * (3 - 2 * progress);
     const localX = settle.startX * (1 - eased);
@@ -2301,7 +2550,7 @@
 
   function showRetry() {
     if (state !== "playing" || ball.held) return;
-    state = "retry";
+    if (setGameState("retry")) markSaveDirty();
     drag = null;
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
@@ -2321,7 +2570,7 @@
     swishStreak = 0;
     perfectChain = 0;
     placeBallInHoop(currentHoop);
-    state = "playing";
+    setGameState("playing");
     retryOverlay.classList.remove("active");
     retryButton.blur();
   }
@@ -2447,6 +2696,10 @@
     }
 
     if (currentHoop && currentHoop.role === HOOP_ROLE.CURRENT && didEnterHoopFromAbove(currentHoop)) {
+      if (timedShotAwaitingShotResult) {
+        beginGameOver();
+        return;
+      }
       swishStreak = 0;
       perfectChain = 0;
       placeBallInHoop(currentHoop);
@@ -2475,6 +2728,7 @@
   }
 
   function scoreTargetHoop(hoop) {
+    consumeTimedShotChallenge();
     ball.scoredHoopId = hoop.id;
     const wasPerfect = !ball.touchedHoop;
     const usedWall = ball.touchedWall;
@@ -2486,6 +2740,8 @@
     lastWasPerfect = wasPerfect;
     lastWasBounce = usedWall;
     score += lastScoreGain;
+    recordBasketStats(wasPerfect, usedWall, lastScoreGain);
+    schedulePlatformSave();
     if (
       highScoreCelebration.eligibleThisRun
       && !highScoreCelebration.hasCelebratedThisRun
@@ -3584,6 +3840,10 @@
     } else if (name === "combo") {
       const comboPitch = 720 + Math.min(detail.streak || 1, 10) * 28;
       playTone(comboPitch, 0.1, "sine", 0.018, 0.1, comboPitch + 110);
+    } else if (name === "countdownTick") {
+      const remainingSeconds = clamp(Math.floor(Number(detail.seconds) || 1), 1, 5);
+      const tickPitch = 520 + (5 - remainingSeconds) * 55;
+      playTone(tickPitch, 0.045, "triangle", 0.018, 0, tickPitch + 70);
     } else if (name === "retry") {
       playTone(280, 0.08, "triangle", 0.022, 0, 390);
       playTone(440, 0.09, "sine", 0.018, 0.06, 520);
@@ -3665,6 +3925,50 @@
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS.tr[key] || key;
   }
 
+  function createDefaultStats() {
+    return {
+      activePlayTimeMs: 0,
+      lifetimeScore: 0,
+      perfectBaskets: 0,
+      bounceBaskets: 0,
+      worldCoinsCollected: 0
+    };
+  }
+
+  function normalizeStatValue(value) {
+    return Number.isSafeInteger(value) && value >= 0 ? value : 0;
+  }
+
+  function normalizeStats(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    return {
+      activePlayTimeMs: normalizeStatValue(source.activePlayTimeMs),
+      lifetimeScore: normalizeStatValue(source.lifetimeScore),
+      perfectBaskets: normalizeStatValue(source.perfectBaskets),
+      bounceBaskets: normalizeStatValue(source.bounceBaskets),
+      worldCoinsCollected: normalizeStatValue(source.worldCoinsCollected)
+    };
+  }
+
+  function hasCanonicalStats(value, normalized) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const keys = Object.keys(createDefaultStats());
+    return Object.keys(value).length === keys.length
+      && keys.every((key) => value[key] === normalized[key]);
+  }
+
+  function addSafeStat(current, increment) {
+    const normalizedCurrent = normalizeStatValue(current);
+    const normalizedIncrement = normalizeStatValue(increment);
+    return Math.min(Number.MAX_SAFE_INTEGER, normalizedCurrent + normalizedIncrement);
+  }
+
+  function recordBasketStats(wasPerfect, usedWall, scoreGain) {
+    stats.lifetimeScore = addSafeStat(stats.lifetimeScore, scoreGain);
+    if (wasPerfect) stats.perfectBaskets = addSafeStat(stats.perfectBaskets, 1);
+    if (usedWall) stats.bounceBaskets = addSafeStat(stats.bounceBaskets, 1);
+  }
+
   function normalizeCoins(value) {
     return Number.isSafeInteger(value) && value >= 0 ? value : 0;
   }
@@ -3692,13 +3996,16 @@
       : source || {};
     const savedScore = source ? Number(source.highScore) : 0;
     const highScore = Number.isSafeInteger(savedScore) && savedScore >= 0 ? savedScore : 0;
-    const normalizedCoins = version >= SAVE_VERSION ? normalizeCoins(source?.coins) : 0;
+    const normalizedCoins = version >= ECONOMY_SAVE_VERSION ? normalizeCoins(source?.coins) : 0;
+    const normalizedStats = version >= STATS_SAVE_VERSION
+      ? normalizeStats(source?.stats)
+      : createDefaultStats();
     let ballSkin = normalizeBallSkinId(settings.ballSkin);
     let theme = THEMES[settings.theme] ? settings.theme : "gym";
-    const balls = version >= SAVE_VERSION
+    const balls = version >= ECONOMY_SAVE_VERSION
       ? normalizeOwnedIds(source?.ownedBallSkins, BALL_SKINS, "classic")
       : new Set(["classic", ballSkin]);
-    const themes = version >= SAVE_VERSION
+    const themes = version >= ECONOMY_SAVE_VERSION
       ? normalizeOwnedIds(source?.ownedThemes, THEMES, "gym")
       : new Set(["gym", theme]);
 
@@ -3716,6 +4023,7 @@
       version !== SAVE_VERSION
       || highScore !== source.highScore
       || normalizedCoins !== source.coins
+      || !hasCanonicalStats(source.stats, normalizedStats)
       || !hasCanonicalOwnedIds(source.ownedBallSkins, balls, BALL_SKINS)
       || !hasCanonicalOwnedIds(source.ownedThemes, themes, THEMES)
       || settings.ballSkin !== ballSkin
@@ -3727,6 +4035,7 @@
     return {
       highScore,
       coins: normalizedCoins,
+      stats: normalizedStats,
       ownedBallSkins: balls,
       ownedThemes: themes,
       darkMode: typeof settings.darkMode === "boolean" ? settings.darkMode : false,
@@ -3741,6 +4050,7 @@
   function applyMigratedSave(migrated) {
     best = migrated.highScore;
     coins = migrated.coins;
+    stats = migrated.stats;
     ownedBallSkins = migrated.ownedBallSkins;
     ownedThemes = migrated.ownedThemes;
     darkMode = migrated.darkMode;
@@ -3840,6 +4150,7 @@
   }
 
   function makeSaveObject(forPlayables) {
+    commitActivePlaySegment({ keepRunning: canAccumulateActivePlayTime() });
     const settings = {
       darkMode: Boolean(darkMode),
       muted: Boolean(muted),
@@ -3851,6 +4162,7 @@
       version: SAVE_VERSION,
       highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
       coins: normalizeCoins(coins),
+      stats: normalizeStats(stats),
       ownedBallSkins: Object.keys(BALL_SKINS).filter((id) => ownedBallSkins.has(id)),
       ownedThemes: Object.keys(THEMES).filter((id) => ownedThemes.has(id)),
       settings
@@ -3861,10 +4173,15 @@
     return JSON.stringify(makeSaveObject(isPlayablesEnv));
   }
 
-  function requestSave(immediate) {
+  function markSaveDirty() {
     if (!persistenceReady) return;
     saveRevision += 1;
     saveDirty = true;
+  }
+
+  function requestSave(immediate) {
+    if (!persistenceReady) return;
+    markSaveDirty();
     if (immediate) {
       if (cloudSaveTimer !== null) window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
@@ -3928,6 +4245,7 @@
 
   function flushPlatformSave() {
     if (!persistenceReady) return Promise.resolve(false);
+    if (commitActivePlaySegment({ keepRunning: canAccumulateActivePlayTime() })) markSaveDirty();
     if (cloudSaveTimer !== null) {
       window.clearTimeout(cloudSaveTimer);
       cloudSaveTimer = null;
@@ -3971,6 +4289,24 @@
     return invalidSave || migrated.needsMigration;
   }
 
+  function formatActivePlayTime(value) {
+    const totalSeconds = Math.floor(normalizeStatValue(value) / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
+  }
+
+  function renderProfile() {
+    if (!activePlayTimeValue) return;
+    const normalized = normalizeStats(stats);
+    activePlayTimeValue.textContent = formatActivePlayTime(normalized.activePlayTimeMs);
+    perfectBasketsValue.textContent = String(normalized.perfectBaskets);
+    bounceBasketsValue.textContent = String(normalized.bounceBaskets);
+    lifetimeScoreValue.textContent = String(normalized.lifetimeScore);
+    worldCoinsCollectedValue.textContent = String(normalized.worldCoinsCollected);
+  }
+
   function applyDarkMode() {
     document.body.classList.toggle("dark-mode", darkMode);
     themeColor.setAttribute("content", darkMode ? "#101923" : "#f7f3e8");
@@ -3992,11 +4328,13 @@
     if (state === "gameover") finalScore.textContent = t("score") + " " + score;
     clearEconomyStatus("ball");
     clearEconomyStatus("theme");
+    renderProfile();
     syncEconomyBalances();
     renderBallCustomizer();
     renderThemeCustomizer();
     syncControlLabels();
     syncRewardedUi();
+    syncTimedShotHud(true);
   }
 
   function getSelectedBallSkin() {
@@ -4223,7 +4561,9 @@
     customizeBallName.textContent = t(selectedSkin.nameKey);
     ballSkinList.replaceChildren();
 
-    for (const skin of Object.values(BALL_SKINS)) {
+    for (const skinId of BALL_SKIN_DISPLAY_ORDER) {
+      const skin = BALL_SKINS[skinId];
+      if (!skin) continue;
       const option = document.createElement("button");
       const isSelected = skin.id === selectedBallSkinId;
       const isOwned = ownedBallSkins.has(skin.id);
@@ -4259,7 +4599,9 @@
     syncEconomyBalances();
     themeList.replaceChildren();
 
-    for (const theme of Object.values(THEMES)) {
+    for (const themeId of THEME_DISPLAY_ORDER) {
+      const theme = THEMES[themeId];
+      if (!theme) continue;
       const option = document.createElement("button");
       const isSelected = theme.id === selectedThemeId;
       const isOwned = ownedThemes.has(theme.id);
@@ -4376,19 +4718,17 @@
     const soundEnabled = !muted && platformAudioEnabled;
     const enabledLabel = darkMode ? t("on") : t("off");
     const darkLabel = t("darkMode") + ": " + enabledLabel;
-    soundButton.setAttribute("aria-pressed", String(soundEnabled));
-    soundButton.textContent = muted ? t("muted") : t("sound");
     settingsSoundButton.setAttribute("aria-pressed", String(soundEnabled));
     settingsSoundButton.textContent = t("sound") + ": " + (soundEnabled ? t("on") : t("off"));
     settingsDarkModeButton.setAttribute("aria-pressed", String(darkMode));
     settingsDarkModeButton.textContent = darkLabel;
     languageButton.textContent = t("language") + ": " + (language === "tr" ? t("turkish") : t("english"));
-    menuButton.textContent = userPaused && state === "paused" ? t("continue") : t("menu");
+    menuButton.textContent = t("menu");
     menuButton.setAttribute("aria-label", menuButton.textContent);
   }
 
   function syncUiState() {
-    const hideHud = state === "menu" || state === "settings" || state === "customize" || state === "theme" || state === "pause-settings";
+    const hideHud = state === "menu" || state === "profile" || state === "settings" || state === "customize" || state === "theme" || state === "pause-settings";
     hud.classList.toggle("hidden", hideHud);
     hud.classList.toggle("pauseActive", state === "paused");
     syncControlLabels();
@@ -4398,14 +4738,17 @@
     if (!platformReady || platformPaused) return;
     ensureAudio();
     playGameSound("button");
-    state = panelName;
+    setGameState(panelName);
     settingsOrigin = "menu";
     if (panelName === "customize") {
       renderBallCustomizer();
     } else if (panelName === "theme") {
       renderThemeCustomizer();
+    } else if (panelName === "profile") {
+      renderProfile();
     }
     mainMenuOverlay.classList.remove("active");
+    profileOverlay.classList.toggle("active", panelName === "profile");
     settingsOverlay.classList.toggle("active", panelName === "settings");
     customizeOverlay.classList.toggle("active", panelName === "customize");
     themeOverlay?.classList.toggle("active", panelName === "theme");
@@ -4416,7 +4759,8 @@
     if (!platformReady || platformPaused) return;
     ensureAudio();
     playGameSound("button");
-    state = "menu";
+    setGameState("menu");
+    profileOverlay.classList.remove("active");
     settingsOverlay.classList.remove("active");
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
@@ -4430,7 +4774,7 @@
     playGameSound("button");
     userPaused = true;
     settingsOrigin = "pause";
-    state = "paused";
+    const activeTimeChanged = setGameState("paused");
     drag = null;
     if (activePointer !== null && canvas.hasPointerCapture(activePointer)) {
       canvas.releasePointerCapture(activePointer);
@@ -4441,12 +4785,13 @@
     pauseOverlay.classList.add("active");
     settingsOverlay.classList.remove("active");
     syncUiState();
+    if (activeTimeChanged) schedulePlatformSave();
   }
 
   function resumePausedGame() {
     if (!platformReady || platformPaused || !userPaused || state !== "paused") return;
     userPaused = false;
-    state = "playing";
+    setGameState("playing");
     pauseOverlay.classList.remove("active");
     syncUiState();
     if (platformAudioEnabled && !muted && audioContext) audioContext.resume().catch(() => {});
@@ -4455,7 +4800,7 @@
 
   function openPauseSettings() {
     if (!userPaused || state !== "paused" || platformPaused) return;
-    state = "pause-settings";
+    setGameState("pause-settings");
     settingsOrigin = "pause";
     pauseOverlay.classList.remove("active");
     settingsOverlay.classList.add("active");
@@ -4465,7 +4810,7 @@
   function closeSettings() {
     if (!platformReady || platformPaused) return;
     if (settingsOrigin === "pause" && userPaused) {
-      state = "paused";
+      setGameState("paused");
       settingsOverlay.classList.remove("active");
       pauseOverlay.classList.add("active");
       syncUiState();
@@ -4474,21 +4819,18 @@
     returnToMainMenu();
   }
 
-  function toggleGameplayPause() {
-    if (state === "playing") pauseGameplay();
-    else if (state === "paused") resumePausedGame();
-  }
-
   function exitGameplayToMainMenu() {
     if (!platformReady || platformPaused) return;
     ensureAudio();
     playGameSound("button");
     flushScoreSubmission();
+    if (stopActivePlayClock()) markSaveDirty();
     userPaused = false;
     pauseOverlay.classList.remove("active");
     settingsOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
     resetGame(true);
+    void flushPlatformSave();
     restartAnimationLoop();
   }
 
@@ -4533,6 +4875,7 @@
 
   function handlePlatformPause() {
     if (platformPaused) return;
+    if (stopActivePlayClock()) markSaveDirty();
     platformPaused = true;
     gameShell.inert = true;
     drag = null;
@@ -4551,6 +4894,7 @@
     if (!platformPaused) return;
     platformPaused = false;
     gameShell.inert = false;
+    startActivePlayClock();
     if (platformAudioEnabled && !muted && !userPaused && audioContext) audioContext.resume().catch(() => {});
     processDeferredRewardedRequest();
     syncRewardedUi();
@@ -4654,6 +4998,7 @@
   canvas.addEventListener("pointercancel", onPointerCancel);
 
   startButton.addEventListener("click", startGame);
+  profileButton.addEventListener("click", () => openMenuPanel("profile"));
   customizeButton.addEventListener("click", () => openMenuPanel("customize"));
   if (customizeThemeButton) customizeThemeButton.addEventListener("click", () => openMenuPanel("theme"));
   settingsButton.addEventListener("click", () => openMenuPanel("settings"));
@@ -4661,13 +5006,15 @@
   settingsDarkModeButton.addEventListener("click", toggleDarkMode);
   languageButton.addEventListener("click", toggleLanguage);
   settingsBackButton.addEventListener("click", closeSettings);
+  profileBackButton.addEventListener("click", returnToMainMenu);
   customizeBackButton.addEventListener("click", returnToMainMenu);
   if (themeBackButton) themeBackButton.addEventListener("click", returnToMainMenu);
   ballRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("ball"));
   themeRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("theme"));
   reviveRewardButton?.addEventListener("click", requestRewardedContinue);
   reviveFinishButton?.addEventListener("click", declineReviveOffer);
-  menuButton.addEventListener("click", toggleGameplayPause);
+  menuButton.addEventListener("click", pauseGameplay);
+  pauseContinueButton.addEventListener("click", resumePausedGame);
   pauseMainMenuButton.addEventListener("click", exitGameplayToMainMenu);
   pauseSettingsButton.addEventListener("click", openPauseSettings);
   gameOverMenuButton.addEventListener("click", exitGameplayToMainMenu);
@@ -4684,8 +5031,6 @@
     retryShot();
     playGameSound("retry");
   });
-  soundButton.addEventListener("click", toggleSound);
-
   window.addEventListener("keydown", (event) => {
     if (!platformReady || platformPaused) return;
     if (event.key === " " && state === "menu") startGame();
@@ -4700,6 +5045,7 @@
     if (event.key === "Escape" && state === "paused") resumePausedGame();
     if (event.key === "Escape" && state === "pause-settings") closeSettings();
     if (event.key === "Escape" && state === "settings") closeSettings();
+    if (event.key === "Escape" && state === "profile") returnToMainMenu();
     if (event.key === "Escape" && state === "customize") returnToMainMenu();
     if (event.key === "Escape" && state === "theme") returnToMainMenu();
   });
