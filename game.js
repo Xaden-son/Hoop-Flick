@@ -197,26 +197,26 @@
   const ECONOMY_PRICES = Object.freeze({
     ball: Object.freeze({
       classic: 0,
-      inverted: 20,
-      neon: 30,
-      watermelon: 40,
-      magma: 50,
-      gold: 60,
-      ghost: 75,
-      toxic: 90,
-      matrix: 110,
+      inverted: 50,
+      neon: 60,
+      watermelon: 75,
+      magma: 90,
+      gold: 100,
+      ghost: 100,
+      toxic: 120,
+      matrix: 100,
       earth: 130,
       cyberpunk: 150,
       bloodMoon: 175,
       zebra: 200,
-      sun: 225
+      sun: 100
     }),
     theme: Object.freeze({
       gym: 0,
-      sunset: 100,
-      neon: 225,
-      rooftop: 75,
-      minimal: 125
+      sunset: 150,
+      neon: 300,
+      rooftop: 175,
+      minimal: 200,
     })
   });
 
