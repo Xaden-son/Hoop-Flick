@@ -9,6 +9,11 @@
   --hud-muted-bg: rgba(255, 255, 255, 0.42);
   --hud-corner-radius: 14px;
   --hud-pill-radius: calc(var(--hud-corner-radius) + 2px);
+  /* MANUAL TIMER SIZE: try 1.15 or 1.25 to make the full timer larger. */
+  --timed-shot-scale: 1.20;
+  --timed-shot-warning: #d96516;
+  --timed-shot-critical: #c43d35;
+  --timed-shot-critical-glow: rgba(196, 61, 53, 0.24);
   --secondary-bg: rgba(255, 255, 255, 0.58);
   --menu-shade: rgba(246, 241, 223, 0.2);
 }
@@ -22,6 +27,9 @@ body.dark-mode {
   --accent-dark: #db611d;
   --hud-bg: rgba(24, 33, 44, 0.76);
   --hud-muted-bg: rgba(24, 33, 44, 0.58);
+  --timed-shot-warning: #ffad45;
+  --timed-shot-critical: #ff6259;
+  --timed-shot-critical-glow: rgba(255, 98, 89, 0.28);
   --secondary-bg: rgba(43, 56, 70, 0.76);
   --menu-shade: rgba(7, 13, 21, 0.28);
 }
@@ -149,6 +157,77 @@ body.dark-mode #gameShell {
   display: flex;
   gap: 8px;
   pointer-events: auto;
+}
+
+.timedShotHud {
+  position: absolute;
+  z-index: 1;
+  top: 56px;
+  left: 50%;
+  width: max-content;
+  min-width: 88px;
+  max-width: 104px;
+  min-height: 32px;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transform: translateX(-50%) scale(var(--timed-shot-scale));
+  transform-origin: top center;
+  border: 1px solid var(--line);
+  border-radius: var(--hud-corner-radius);
+  color: var(--muted);
+  background: var(--hud-bg);
+  box-shadow: 0 8px 22px rgba(60, 68, 80, 0.08);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.timedShotHud[hidden] {
+  display: none;
+}
+
+.timedShotHud strong {
+  color: var(--ink);
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.timedShotHud.warning {
+  border-color: var(--timed-shot-warning);
+  color: var(--timed-shot-warning);
+}
+
+.timedShotHud.warning strong {
+  color: var(--timed-shot-warning);
+}
+
+.timedShotHud.critical {
+  border-color: var(--timed-shot-critical);
+  color: var(--timed-shot-critical);
+  box-shadow: 0 0 0 1px var(--timed-shot-critical-glow), 0 8px 22px var(--timed-shot-critical-glow);
+  animation: timedShotPulse 720ms ease-in-out infinite;
+}
+
+.timedShotHud.critical strong {
+  color: var(--timed-shot-critical);
+}
+
+@keyframes timedShotPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 1px var(--timed-shot-critical-glow), 0 8px 22px var(--timed-shot-critical-glow);
+  }
+
+  50% {
+    box-shadow: 0 0 0 3px var(--timed-shot-critical-glow), 0 8px 26px var(--timed-shot-critical-glow);
+  }
 }
 
 .coinHud {
@@ -815,6 +894,10 @@ p {
   .overlay {
     transition: none;
   }
+
+  .timedShotHud.critical {
+    animation: none;
+  }
 }
 
 .primaryButton:active {
@@ -922,6 +1005,12 @@ p {
 
   .hudActions {
     gap: 6px;
+  }
+
+  .timedShotHud {
+    top: 54px;
+    min-height: 30px;
+    padding: 4px 9px;
   }
 
   .coinHud {
