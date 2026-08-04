@@ -78,6 +78,18 @@
   const WORLD_H = 746;
   const START_HOOP_BOTTOM_OFFSET = 183;
   const HOOP_WIDTH = 72;
+  const HOOP_SPRITE_CONFIG = Object.freeze({
+    sourceSize: 1024,
+    anchorX: 515,
+    anchorY: 358,
+    referenceWidth: 533,
+    layers: Object.freeze({
+      netBack: "assets/hoop/net-back.png",
+      rimBack: "assets/hoop/rim-back.png",
+      netFront: "assets/hoop/net-front.png",
+      rimFront: "assets/hoop/rim-front.png"
+    })
+  });
   const GRAVITY = 1420;
   const AIR_DRAG = 0.998;
 
@@ -955,6 +967,14 @@
     }
   };
   const ballSkinImages = Object.create(null);
+  const hoopSpriteImages = Object.create(null);
+  const hoopSpriteState = {
+    started: false,
+    loadedCount: 0,
+    ready: false,
+    failed: false,
+    warningSent: false
+  };
   const TRANSLATIONS = {
     tr: {
       arcadeEyebrow: "ARCADE BASKETBOL",
@@ -3035,6 +3055,7 @@
     ctx.clearRect(0, 0, viewW, viewH);
     const sx = offsetX + (shake ? random(-shake, shake) : 0);
     const sy = offsetY + (shake ? random(-shake, shake) : 0);
+    const hoopSpritesReady = isHoopSpriteSetReady();
     ctx.save();
     ctx.translate(sx, sy);
     ctx.scale(scale, scale);
@@ -3044,13 +3065,15 @@
     drawWalls();
     drawCurrentScore();
     for (const hoop of hoops) drawHoopMotionPath(hoop);
-    for (const hoop of hoops) drawHoop(hoop);
+    for (const hoop of hoops) drawHoop(hoop, hoopSpritesReady);
     drawActiveCoin();
     drawShotRings();
     drawParticles();
     if (drag && ball.held) drawTrajectory();
     drawBall();
-    if (ball.held || ball.settle) {
+    if (hoopSpritesReady) {
+      for (const hoop of hoops) drawHoopFront(hoop, true);
+    } else if (ball.held || ball.settle) {
       const currentHoop = getHoopById(currentHoopId);
       if (currentHoop) drawHoopFront(currentHoop);
     }
@@ -3397,7 +3420,25 @@
     ctx.scale(scale, scale);
   }
 
-  function drawHoop(hoop) {
+  function drawHoopSpriteLayer(layerName, hoop) {
+    const image = hoopSpriteImages[layerName];
+    const sourceSize = HOOP_SPRITE_CONFIG.sourceSize;
+    const spriteScale = hoop.w / HOOP_SPRITE_CONFIG.referenceWidth;
+    const destinationSize = sourceSize * spriteScale;
+    ctx.drawImage(
+      image,
+      0,
+      0,
+      sourceSize,
+      sourceSize,
+      -HOOP_SPRITE_CONFIG.anchorX * spriteScale,
+      -HOOP_SPRITE_CONFIG.anchorY * spriteScale,
+      destinationSize,
+      destinationSize
+    );
+  }
+
+  function drawHoop(hoop, useHoopSprites) {
     const colors = getCanvasTheme();
     const rimY = 0;
     const left = -hoop.w * 0.5;
@@ -3429,6 +3470,13 @@
       ctx.lineTo(boardGeometry.x, boardGeometry.bottom);
       ctx.stroke();
       ctx.restore();
+    }
+
+    if (useHoopSprites) {
+      drawHoopSpriteLayer("netBack", hoop);
+      drawHoopSpriteLayer("rimBack", hoop);
+      ctx.restore();
+      return;
     }
 
     // Thin premium net: short, bright, and airy like the soft arcade references.
@@ -3491,9 +3539,22 @@
     ctx.quadraticCurveTo(offsetX, y + sag + offsetY, halfWidth + offsetX * 0.25, y + offsetY * 0.4);
   }
 
-  function drawHoopFront(hoop) {
-    const colors = getCanvasTheme();
+  function drawHoopFront(hoop, useHoopSprites) {
     const deformation = getHoopDeformation(hoop);
+
+    if (useHoopSprites) {
+      ctx.save();
+      if (hoop.role === HOOP_ROLE.INACTIVE) ctx.globalAlpha = 0.42;
+      ctx.translate(hoop.x + deformation.offsetX, hoop.y + deformation.offsetY);
+      applyHoopSpawnTransform(hoop);
+      ctx.rotate(hoop.rotation + deformation.visualTilt);
+      drawHoopSpriteLayer("netFront", hoop);
+      drawHoopSpriteLayer("rimFront", hoop);
+      ctx.restore();
+      return;
+    }
+
+    const colors = getCanvasTheme();
     const netSwing = deformation.netSwing;
     const netStretch = deformation.netStretch;
 
@@ -3582,6 +3643,49 @@
       ballSkinImages[skin.id] = image;
     }
     return ballSkinImages[skin.id];
+  }
+
+  function failHoopSpriteSet(message) {
+    hoopSpriteState.failed = true;
+    hoopSpriteState.ready = false;
+    if (hoopSpriteState.warningSent) return;
+    hoopSpriteState.warningSent = true;
+    console.warn("[Hoop Flick] Hoop sprite set unavailable; procedural fallback is active. " + message);
+  }
+
+  function preloadHoopSpriteSet() {
+    if (hoopSpriteState.started) return;
+    hoopSpriteState.started = true;
+    if (typeof Image === "undefined") {
+      failHoopSpriteSet("Image loading is unsupported.");
+      return;
+    }
+
+    const layers = Object.entries(HOOP_SPRITE_CONFIG.layers);
+    for (const [layerName, assetPath] of layers) {
+      const image = new Image();
+      image.decoding = "async";
+      image.onload = () => {
+        if (
+          image.naturalWidth !== HOOP_SPRITE_CONFIG.sourceSize
+          || image.naturalHeight !== HOOP_SPRITE_CONFIG.sourceSize
+        ) {
+          failHoopSpriteSet(layerName + " has unexpected dimensions.");
+          return;
+        }
+        hoopSpriteState.loadedCount += 1;
+        if (!hoopSpriteState.failed && hoopSpriteState.loadedCount === layers.length) {
+          hoopSpriteState.ready = true;
+        }
+      };
+      image.onerror = () => failHoopSpriteSet(layerName + " failed to load.");
+      image.src = assetPath;
+      hoopSpriteImages[layerName] = image;
+    }
+  }
+
+  function isHoopSpriteSetReady() {
+    return hoopSpriteState.ready && !hoopSpriteState.failed;
   }
 
   function drawTrajectory() {
@@ -5050,5 +5154,6 @@
     if (event.key === "Escape" && state === "theme") returnToMainMenu();
   });
 
+  preloadHoopSpriteSet();
   bootGame();
 })();
