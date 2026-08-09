@@ -26,7 +26,7 @@
           <button id="startButton" class="primaryButton" type="button" data-i18n="play">Oyna</button>
           <button id="customizeButton" class="secondaryButton" type="button" data-i18n="customize">Topu Özelleştir</button>
           <button id="customizeThemeButton" class="secondaryButton" type="button" data-i18n="customizeTheme">Temayı Özelleştir</button>
-          <button id="profileButton" class="secondaryButton" type="button" data-i18n="profile">Profil</button>
+          <button id="profileButton" class="secondaryButton achievementBadgeHost" type="button" data-i18n="profile" data-achievement-count="0">Profil</button>
           <button id="settingsButton" class="secondaryButton" type="button" data-i18n="settings">Ayarlar</button>
         </div>
       </div>
@@ -59,7 +59,28 @@
           </div>
         </dl>
         <div class="menuActions">
+          <button id="profileAchievementsButton" class="secondaryButton achievementBadgeHost" type="button" data-i18n="achievements" data-achievement-count="0">Başarılar</button>
           <button id="profileBackButton" class="primaryButton" type="button" data-i18n="back">Geri</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="achievementsOverlay" class="overlay menuOverlay" aria-live="polite">
+      <div class="panel menuPanel compact achievementsPanel">
+        <span class="eyebrow" data-i18n="achievementEyebrow">ÖDÜL YOLCULUĞU</span>
+        <h2 data-i18n="achievements">Başarılar</h2>
+        <div class="achievementOverview">
+          <div class="economyBalance achievementBalance" role="status" aria-live="polite">
+            <span class="coinIcon" aria-hidden="true"></span>
+            <span data-i18n="coins">Coin</span>
+            <strong id="achievementCoinBalanceValue">0</strong>
+          </div>
+          <p id="achievementSummary" class="achievementSummary">0 / 19</p>
+        </div>
+        <button id="achievementClaimAllButton" class="primaryButton achievementClaimAllButton" type="button" disabled data-i18n="claimAllAchievements">Tümünü Topla</button>
+        <div id="achievementList" class="achievementList" role="list"></div>
+        <div class="menuActions">
+          <button id="achievementsBackButton" class="secondaryButton" type="button" data-i18n="backToProfile">Profile Dön</button>
         </div>
       </div>
     </section>
@@ -167,6 +188,14 @@
         <button id="retryMenuButton" class="secondaryButton overlaySecondaryButton" type="button" data-i18n="mainMenu">Ana Menü</button>
       </div>
     </section>
+
+    <div id="achievementToast" class="achievementToast" role="status" aria-live="polite" aria-atomic="true">
+      <span class="achievementToastMedal" aria-hidden="true">★</span>
+      <span>
+        <strong data-i18n="achievementUnlocked">Başarım açıldı</strong>
+        <span id="achievementToastName"></span>
+      </span>
+    </div>
 
     <div id="hud" class="hud" aria-live="polite">
       <div class="scoreBlock">

@@ -16,6 +16,10 @@
   --timed-shot-critical-glow: rgba(196, 61, 53, 0.24);
   --secondary-bg: rgba(255, 255, 255, 0.58);
   --menu-shade: rgba(246, 241, 223, 0.2);
+  --achievement-bronze: #b96f3f;
+  --achievement-silver: #8d9aa8;
+  --achievement-gold: #d99a13;
+  --achievement-flame: #f05a24;
 }
 
 body.dark-mode {
@@ -32,6 +36,10 @@ body.dark-mode {
   --timed-shot-critical-glow: rgba(255, 98, 89, 0.28);
   --secondary-bg: rgba(43, 56, 70, 0.76);
   --menu-shade: rgba(7, 13, 21, 0.28);
+  --achievement-bronze: #d18a58;
+  --achievement-silver: #c6d0da;
+  --achievement-gold: #ffc24a;
+  --achievement-flame: #ff7040;
 }
 
 * {
@@ -425,6 +433,311 @@ body.dark-mode #gameShell {
   font-size: 24px;
   font-weight: 850;
   line-height: 1;
+}
+
+.achievementBadgeHost {
+  position: relative;
+}
+
+.achievementBadgeHost.hasAchievementBadge::after {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  place-items: center;
+  border: 2px solid var(--panel);
+  border-radius: 999px;
+  color: #fff;
+  background: var(--accent);
+  box-shadow: 0 5px 14px rgba(189, 80, 22, 0.28);
+  content: attr(data-achievement-count);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.achievementsPanel {
+  width: min(450px, 94vw);
+  text-align: left;
+}
+
+.achievementsPanel > .eyebrow,
+.achievementsPanel > h2 {
+  display: block;
+  text-align: center;
+}
+
+.achievementOverview {
+  display: flex;
+  margin-top: 14px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.achievementBalance {
+  margin-top: 0;
+}
+
+.achievementSummary {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.achievementClaimAllButton {
+  height: 46px;
+  margin-top: 12px;
+}
+
+.achievementClaimAllButton:disabled,
+.achievementClaimButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+  transform: none;
+}
+
+.achievementList {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.achievementGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.achievementGroup + .achievementGroup {
+  margin-top: 6px;
+}
+
+.achievementGroupTitle {
+  margin: 0;
+  padding: 3px 2px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.achievementCard {
+  --medal-color: var(--achievement-gold);
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 10px;
+  min-width: 0;
+  padding: 11px;
+  align-items: center;
+  border: 1px solid color-mix(in srgb, var(--medal-color) 42%, var(--line));
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--medal-color) 8%, var(--secondary-bg));
+  box-shadow: 0 7px 18px rgba(39, 48, 65, 0.07);
+}
+
+.achievementCard.bronze {
+  --medal-color: var(--achievement-bronze);
+}
+
+.achievementCard.silver {
+  --medal-color: var(--achievement-silver);
+}
+
+.achievementCard.gold,
+.achievementCard.special {
+  --medal-color: var(--achievement-gold);
+}
+
+.achievementCard.flame {
+  --medal-color: var(--achievement-flame);
+  border-color: rgba(240, 90, 36, 0.62);
+  background:
+    radial-gradient(circle at 12% 18%, rgba(255, 199, 71, 0.2), transparent 32%),
+    linear-gradient(135deg, rgba(240, 90, 36, 0.15), rgba(134, 51, 173, 0.11)),
+    var(--secondary-bg);
+  box-shadow: 0 9px 24px rgba(240, 90, 36, 0.18);
+}
+
+.achievementCard.locked {
+  --medal-color: #8b9098;
+  border-color: var(--line);
+  background: color-mix(in srgb, var(--muted) 7%, var(--secondary-bg));
+  box-shadow: none;
+  filter: grayscale(0.9);
+  opacity: 0.64;
+}
+
+.achievementMedal {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border: 2px solid color-mix(in srgb, var(--medal-color) 72%, #5b3a16);
+  border-radius: 50%;
+  color: #fff;
+  background:
+    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, 0.52), transparent 22%),
+    var(--medal-color);
+  box-shadow: inset 0 -3px 0 rgba(55, 39, 26, 0.18), 0 5px 12px color-mix(in srgb, var(--medal-color) 28%, transparent);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.achievementCard.flame .achievementMedal {
+  border-color: #ffb23f;
+  background: linear-gradient(145deg, #ffcf4a, #f05a24 58%, #8337ad);
+  box-shadow: 0 0 18px rgba(240, 90, 36, 0.48), inset 0 -3px 0 rgba(75, 24, 51, 0.22);
+}
+
+.achievementInfo {
+  min-width: 0;
+}
+
+.achievementInfo h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.18;
+}
+
+.achievementInfo p {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.achievementProgressRow {
+  display: flex;
+  margin-top: 7px;
+  align-items: center;
+  gap: 8px;
+}
+
+.achievementProgressTrack {
+  flex: 1;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+}
+
+.achievementProgressFill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--medal-color);
+}
+
+.achievementProgressText {
+  min-width: 42px;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 850;
+  text-align: right;
+}
+
+.achievementReward {
+  display: grid;
+  min-width: 74px;
+  justify-items: end;
+  gap: 6px;
+}
+
+.achievementRewardValue {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.achievementRewardValue .coinIcon {
+  width: 14px;
+  height: 14px;
+  border-width: 1px;
+}
+
+.achievementClaimButton {
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--medal-color) 55%, var(--line));
+  border-radius: 7px;
+  padding: 4px 8px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--medal-color) 16%, var(--secondary-bg));
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.achievementClaimed {
+  color: var(--medal-color);
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.achievementToast {
+  position: absolute;
+  z-index: 8;
+  top: max(76px, calc(env(safe-area-inset-top) + 62px));
+  left: 50%;
+  display: flex;
+  width: min(340px, calc(100vw - 28px));
+  min-height: 58px;
+  padding: 10px 14px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(244, 123, 32, 0.42);
+  border-radius: 10px;
+  color: var(--ink);
+  background: var(--panel);
+  box-shadow: 0 14px 36px rgba(39, 48, 65, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -12px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.achievementToast.active {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.achievementToast > span:last-child {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.achievementToast strong {
+  color: var(--accent-dark);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#achievementToastName {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.achievementToastMedal {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(145deg, #ffd75a, var(--accent));
+  box-shadow: 0 5px 13px rgba(244, 123, 32, 0.28);
 }
 
 .customizePanel {
@@ -891,7 +1204,8 @@ p {
 
 @media (prefers-reduced-motion: reduce) {
   #gameShell,
-  .overlay {
+  .overlay,
+  .achievementToast {
     transition: none;
   }
 
@@ -926,8 +1240,32 @@ p {
 
   .menuPanel,
   .customizePanel,
-  .profilePanel {
+  .profilePanel,
+  .achievementsPanel {
     width: min(376px, 94vw);
+  }
+
+  .achievementCard {
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .achievementMedal {
+    width: 36px;
+    height: 36px;
+  }
+
+  .achievementReward {
+    grid-column: 2;
+    grid-template-columns: 1fr auto;
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+  }
+
+  .achievementClaimButton {
+    min-height: 32px;
   }
 
   .menuPanel h1 {
@@ -1106,5 +1444,10 @@ p {
 
   .profileStat {
     padding: 10px 12px;
+  }
+
+  .achievementList {
+    gap: 8px;
+    margin-top: 12px;
   }
 }
