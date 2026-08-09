@@ -4939,6 +4939,11 @@
     restartAnimationLoop();
   }
 
+  function handlePauseOverlayClick(event) {
+    if (event.target !== pauseOverlay) return;
+    resumePausedGame();
+  }
+
   function openPauseSettings() {
     if (!userPaused || state !== "paused" || platformPaused) return;
     setGameState("pause-settings");
@@ -5156,6 +5161,7 @@
   reviveFinishButton?.addEventListener("click", declineReviveOffer);
   menuButton.addEventListener("click", pauseGameplay);
   pauseContinueButton.addEventListener("click", resumePausedGame);
+  pauseOverlay.addEventListener("click", handlePauseOverlayClick);
   pauseMainMenuButton.addEventListener("click", exitGameplayToMainMenu);
   pauseSettingsButton.addEventListener("click", openPauseSettings);
   gameOverMenuButton.addEventListener("click", exitGameplayToMainMenu);
@@ -5174,6 +5180,29 @@
   });
   window.addEventListener("keydown", (event) => {
     if (!platformReady || platformPaused) return;
+    if (event.key === "Escape") {
+      if (event.repeat) return;
+      if (state === "playing") {
+        event.preventDefault();
+        pauseGameplay();
+        return;
+      }
+      if (state === "paused") {
+        event.preventDefault();
+        resumePausedGame();
+        return;
+      }
+      if (state === "pause-settings" || state === "settings") {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+      if (state === "profile" || state === "customize" || state === "theme") {
+        event.preventDefault();
+        returnToMainMenu();
+        return;
+      }
+    }
     if (event.key === " " && state === "menu") startGame();
     if ((event.key === "r" || event.key === "R") && state === "gameover") {
       resetGame(false);
@@ -5183,12 +5212,6 @@
       retryShot();
       playGameSound("retry");
     }
-    if (event.key === "Escape" && state === "paused") resumePausedGame();
-    if (event.key === "Escape" && state === "pause-settings") closeSettings();
-    if (event.key === "Escape" && state === "settings") closeSettings();
-    if (event.key === "Escape" && state === "profile") returnToMainMenu();
-    if (event.key === "Escape" && state === "customize") returnToMainMenu();
-    if (event.key === "Escape" && state === "theme") returnToMainMenu();
   });
 
   preloadHoopSpriteSet();
