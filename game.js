@@ -6,6 +6,7 @@
   const gameShell = document.getElementById("gameShell");
   const mainMenuOverlay = document.getElementById("mainMenuOverlay");
   const profileOverlay = document.getElementById("profileOverlay");
+  const achievementsOverlay = document.getElementById("achievementsOverlay");
   const settingsOverlay = document.getElementById("settingsOverlay");
   const customizeOverlay = document.getElementById("customizeOverlay");
   const themeOverlay = document.getElementById("themeOverlay");
@@ -16,6 +17,7 @@
   const themeColor = document.getElementById("themeColor");
   const startButton = document.getElementById("startButton");
   const profileButton = document.getElementById("profileButton");
+  const profileAchievementsButton = document.getElementById("profileAchievementsButton");
   const customizeButton = document.getElementById("customizeButton");
   const customizeThemeButton = document.getElementById("customizeThemeButton");
   const settingsButton = document.getElementById("settingsButton");
@@ -24,6 +26,7 @@
   const languageButton = document.getElementById("languageButton");
   const settingsBackButton = document.getElementById("settingsBackButton");
   const profileBackButton = document.getElementById("profileBackButton");
+  const achievementsBackButton = document.getElementById("achievementsBackButton");
   const customizeBackButton = document.getElementById("customizeBackButton");
   const themeBackButton = document.getElementById("themeBackButton");
   const pauseContinueButton = document.getElementById("pauseContinueButton");
@@ -58,6 +61,12 @@
   const bounceBasketsValue = document.getElementById("bounceBasketsValue");
   const lifetimeScoreValue = document.getElementById("lifetimeScoreValue");
   const worldCoinsCollectedValue = document.getElementById("worldCoinsCollectedValue");
+  const achievementCoinBalanceValue = document.getElementById("achievementCoinBalanceValue");
+  const achievementSummary = document.getElementById("achievementSummary");
+  const achievementClaimAllButton = document.getElementById("achievementClaimAllButton");
+  const achievementList = document.getElementById("achievementList");
+  const achievementToast = document.getElementById("achievementToast");
+  const achievementToastName = document.getElementById("achievementToastName");
   const reviveOfferOverlay = document.getElementById("reviveOfferOverlay");
   const reviveOfferCountdown = document.getElementById("reviveOfferCountdown");
   const reviveOfferStatus = document.getElementById("reviveOfferStatus");
@@ -71,9 +80,10 @@
   const BALL_SKIN_KEY = "hoop-flick-ball-skin";
   const THEME_KEY = "hoop-flick-theme";
   const LOCAL_SAVE_KEY = "hoop-flick-save-v4";
-  const SAVE_VERSION = 5;
+  const SAVE_VERSION = 6;
   const ECONOMY_SAVE_VERSION = 4;
   const STATS_SAVE_VERSION = 5;
+  const ACHIEVEMENT_SAVE_VERSION = 6;
   const WORLD_W = 420;
   const WORLD_H = 746;
   const START_HOOP_BOTTOM_OFFSET = 183;
@@ -223,26 +233,26 @@
   const ECONOMY_PRICES = Object.freeze({
     ball: Object.freeze({
       classic: 0,
-      inverted: 50,
-      neon: 60,
-      watermelon: 75,
-      magma: 90,
-      gold: 100,
-      ghost: 100,
+      inverted: 100,
+      neon: 150,
+      watermelon: 100,
+      magma: 100,
+      gold: 150,
+      ghost: 150,
       toxic: 120,
-      matrix: 100,
+      matrix: 150,
       earth: 130,
       cyberpunk: 150,
       bloodMoon: 175,
       zebra: 200,
-      sun: 100
+      sun: 150
     }),
     theme: Object.freeze({
       gym: 0,
-      sunset: 150,
-      neon: 300,
-      rooftop: 175,
-      minimal: 200,
+      sunset: 200,
+      neon: 500,
+      rooftop: 250,
+      minimal: 450,
     })
   });
 
@@ -971,6 +981,29 @@
       }
     }
   };
+  const ACHIEVEMENTS = Object.freeze([
+    Object.freeze({ id: "perfect_streak_5", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect5Name", descriptionKey: "achievementPerfect5Description", tier: "bronze", metric: "perfectStreak", target: 5, reward: 15 }),
+    Object.freeze({ id: "perfect_streak_10", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect10Name", descriptionKey: "achievementPerfect10Description", tier: "silver", metric: "perfectStreak", target: 10, reward: 30 }),
+    Object.freeze({ id: "perfect_streak_20", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect20Name", descriptionKey: "achievementPerfect20Description", tier: "gold", metric: "perfectStreak", target: 20, reward: 60 }),
+    Object.freeze({ id: "perfect_streak_30", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect30Name", descriptionKey: "achievementPerfect30Description", tier: "flame", metric: "perfectStreak", target: 30, reward: 100 }),
+    Object.freeze({ id: "run_bounce_5", groupKey: "achievementGroupRunBounce", nameKey: "achievementRunBounce5Name", descriptionKey: "achievementRunBounce5Description", tier: "bronze", metric: "runBounce", target: 5, reward: 20 }),
+    Object.freeze({ id: "run_bounce_10", groupKey: "achievementGroupRunBounce", nameKey: "achievementRunBounce10Name", descriptionKey: "achievementRunBounce10Description", tier: "silver", metric: "runBounce", target: 10, reward: 50 }),
+    Object.freeze({ id: "run_bounce_20", groupKey: "achievementGroupRunBounce", nameKey: "achievementRunBounce20Name", descriptionKey: "achievementRunBounce20Description", tier: "gold", metric: "runBounce", target: 20, reward: 100 }),
+    Object.freeze({ id: "lifetime_bounce_20", groupKey: "achievementGroupLifetimeBounce", nameKey: "achievementLifetimeBounce20Name", descriptionKey: "achievementLifetimeBounce20Description", tier: "bronze", metric: "lifetimeBounce", target: 20, reward: 15 }),
+    Object.freeze({ id: "lifetime_bounce_50", groupKey: "achievementGroupLifetimeBounce", nameKey: "achievementLifetimeBounce50Name", descriptionKey: "achievementLifetimeBounce50Description", tier: "silver", metric: "lifetimeBounce", target: 50, reward: 35 }),
+    Object.freeze({ id: "lifetime_bounce_100", groupKey: "achievementGroupLifetimeBounce", nameKey: "achievementLifetimeBounce100Name", descriptionKey: "achievementLifetimeBounce100Description", tier: "gold", metric: "lifetimeBounce", target: 100, reward: 75 }),
+    Object.freeze({ id: "daily_login_7", groupKey: "achievementGroupDaily", nameKey: "achievementDaily7Name", descriptionKey: "achievementDaily7Description", tier: "bronze", metric: "dailyStreak", target: 7, reward: 25 }),
+    Object.freeze({ id: "daily_login_14", groupKey: "achievementGroupDaily", nameKey: "achievementDaily14Name", descriptionKey: "achievementDaily14Description", tier: "silver", metric: "dailyStreak", target: 14, reward: 50 }),
+    Object.freeze({ id: "daily_login_30", groupKey: "achievementGroupDaily", nameKey: "achievementDaily30Name", descriptionKey: "achievementDaily30Description", tier: "gold", metric: "dailyStreak", target: 30, reward: 125 }),
+    Object.freeze({ id: "ball_collection_5", groupKey: "achievementGroupCollection", nameKey: "achievementBall5Name", descriptionKey: "achievementBall5Description", tier: "bronze", metric: "ballCollection", target: 5, reward: 25 }),
+    Object.freeze({ id: "ball_collection_10", groupKey: "achievementGroupCollection", nameKey: "achievementBall10Name", descriptionKey: "achievementBall10Description", tier: "silver", metric: "ballCollection", target: 10, reward: 60 }),
+    Object.freeze({ id: "ball_collection_all", groupKey: "achievementGroupCollection", nameKey: "achievementBallAllName", descriptionKey: "achievementBallAllDescription", tier: "gold", metric: "ballCollection", target: Object.keys(BALL_SKINS).length, reward: 125 }),
+    Object.freeze({ id: "double_bounce_basket", groupKey: "achievementGroupSpecial", nameKey: "achievementDoubleBounceName", descriptionKey: "achievementDoubleBounceDescription", tier: "special", metric: "unlocked", target: 1, reward: 50 }),
+    Object.freeze({ id: "theme_collection_all", groupKey: "achievementGroupSpecial", nameKey: "achievementThemeAllName", descriptionKey: "achievementThemeAllDescription", tier: "special", metric: "themeCollection", target: Object.keys(THEMES).length, reward: 100 }),
+    Object.freeze({ id: "first_shot_bounce", groupKey: "achievementGroupSpecial", nameKey: "achievementFirstBounceName", descriptionKey: "achievementFirstBounceDescription", tier: "special", metric: "unlocked", target: 1, reward: 25 })
+  ]);
+  const ACHIEVEMENT_BY_ID = Object.freeze(Object.fromEntries(ACHIEVEMENTS.map((achievement) => [achievement.id, achievement])));
+
   const ballSkinImages = Object.create(null);
   const hoopSpriteImages = Object.create(null);
   const hoopSpriteState = {
@@ -993,6 +1026,64 @@
       bounceBaskets: "Duvardan Atışlar",
       lifetimeScore: "Toplam Skor",
       worldCoinsCollected: "Toplanan Dünya Coinleri",
+      achievements: "Başarılar",
+      achievementEyebrow: "ÖDÜL YOLCULUĞU",
+      claimAllAchievements: "Tümünü Topla",
+      backToProfile: "Profile Dön",
+      achievementUnlocked: "Başarım açıldı",
+      achievementCompleted: "Tamamlanan",
+      achievementClaim: "Coini Al",
+      achievementClaimed: "Alındı",
+      achievementRewardsReady: "ödül hazır",
+      achievementGroupPerfect: "Perfect Serisi",
+      achievementGroupRunBounce: "Tek Oyunda Bounce",
+      achievementGroupLifetimeBounce: "Toplam Bounce",
+      achievementGroupDaily: "Günlük Seri",
+      achievementGroupCollection: "Top Koleksiyonu",
+      achievementGroupSpecial: "Özel Başarılar",
+      achievementTierBronze: "Bronz",
+      achievementTierSilver: "Gümüş",
+      achievementTierGold: "Altın",
+      achievementTierFlame: "Alev Efsanesi",
+      achievementTierSpecial: "Özel",
+      achievementPerfect5Name: "Kıvılcım",
+      achievementPerfect5Description: "Art arda 5 perfect basket at.",
+      achievementPerfect10Name: "Alev Aldı",
+      achievementPerfect10Description: "Art arda 10 perfect basket at.",
+      achievementPerfect20Name: "Altın Dokunuş",
+      achievementPerfect20Description: "Art arda 20 perfect basket at.",
+      achievementPerfect30Name: "Hall of Flame",
+      achievementPerfect30Description: "Art arda 30 perfect basketle efsaneler arasına gir.",
+      achievementRunBounce5Name: "Sek Sek",
+      achievementRunBounce5Description: "Tek bir oyunda 5 bounce basket at.",
+      achievementRunBounce10Name: "Duvar Dansı",
+      achievementRunBounce10Description: "Tek bir oyunda 10 bounce basket at.",
+      achievementRunBounce20Name: "Pinball Kralı",
+      achievementRunBounce20Description: "Tek bir oyunda 20 bounce basket at.",
+      achievementLifetimeBounce20Name: "Duvarla Tanış",
+      achievementLifetimeBounce20Description: "Başarılar güncellemesinden sonra toplam 20 bounce basket at.",
+      achievementLifetimeBounce50Name: "Duvar Dostu",
+      achievementLifetimeBounce50Description: "Başarılar güncellemesinden sonra toplam 50 bounce basket at.",
+      achievementLifetimeBounce100Name: "Duvar Fısıldayan",
+      achievementLifetimeBounce100Description: "Başarılar güncellemesinden sonra toplam 100 bounce basket at.",
+      achievementDaily7Name: "Saha Müdavimi",
+      achievementDaily7Description: "7 gün art arda oyuna gir.",
+      achievementDaily14Name: "Ritim Tutturdu",
+      achievementDaily14Description: "14 gün art arda oyuna gir.",
+      achievementDaily30Name: "Potadan Kopamayan",
+      achievementDaily30Description: "30 gün art arda oyuna gir.",
+      achievementBall5Name: "Cool Ball",
+      achievementBall5Description: "En az 5 top görünümüne sahip ol.",
+      achievementBall10Name: "Top Bende",
+      achievementBall10Description: "En az 10 top görünümüne sahip ol.",
+      achievementBallAllName: "Tam Kadro",
+      achievementBallAllDescription: "Koleksiyondaki bütün top görünümlerine sahip ol.",
+      achievementDoubleBounceName: "Çifte Sek",
+      achievementDoubleBounceDescription: "Tek atışta iki gerçek bounce yapıp basket at.",
+      achievementThemeAllName: "Good Look",
+      achievementThemeAllDescription: "Bütün temalara sahip ol.",
+      achievementFirstBounceName: "Bounce Start",
+      achievementFirstBounceDescription: "Yeni oyunun ilk gerçek atışında bounce basket at.",
       customize: "Topu Özelleştir",
       customizeTheme: "Temayı Özelleştir",
       settings: "Ayarlar",
@@ -1083,6 +1174,64 @@
       bounceBaskets: "Bounce Baskets",
       lifetimeScore: "Lifetime Score",
       worldCoinsCollected: "World Coins Collected",
+      achievements: "Achievements",
+      achievementEyebrow: "REWARD JOURNEY",
+      claimAllAchievements: "Claim All",
+      backToProfile: "Back to Profile",
+      achievementUnlocked: "Achievement unlocked",
+      achievementCompleted: "Completed",
+      achievementClaim: "Claim Coins",
+      achievementClaimed: "Claimed",
+      achievementRewardsReady: "rewards ready",
+      achievementGroupPerfect: "Perfect Streak",
+      achievementGroupRunBounce: "Bounce in One Run",
+      achievementGroupLifetimeBounce: "Lifetime Bounce",
+      achievementGroupDaily: "Daily Streak",
+      achievementGroupCollection: "Ball Collection",
+      achievementGroupSpecial: "Special Achievements",
+      achievementTierBronze: "Bronze",
+      achievementTierSilver: "Silver",
+      achievementTierGold: "Gold",
+      achievementTierFlame: "Flame Legend",
+      achievementTierSpecial: "Special",
+      achievementPerfect5Name: "Spark",
+      achievementPerfect5Description: "Make 5 perfect baskets in a row.",
+      achievementPerfect10Name: "On Fire",
+      achievementPerfect10Description: "Make 10 perfect baskets in a row.",
+      achievementPerfect20Name: "Golden Touch",
+      achievementPerfect20Description: "Make 20 perfect baskets in a row.",
+      achievementPerfect30Name: "Hall of Flame",
+      achievementPerfect30Description: "Join the legends with 30 perfect baskets in a row.",
+      achievementRunBounce5Name: "Hopscotch",
+      achievementRunBounce5Description: "Make 5 bounce baskets in one run.",
+      achievementRunBounce10Name: "Wall Dance",
+      achievementRunBounce10Description: "Make 10 bounce baskets in one run.",
+      achievementRunBounce20Name: "Pinball Royalty",
+      achievementRunBounce20Description: "Make 20 bounce baskets in one run.",
+      achievementLifetimeBounce20Name: "Meet the Wall",
+      achievementLifetimeBounce20Description: "Make 20 bounce baskets after the achievements update.",
+      achievementLifetimeBounce50Name: "Wall Buddy",
+      achievementLifetimeBounce50Description: "Make 50 bounce baskets after the achievements update.",
+      achievementLifetimeBounce100Name: "Wall Whisperer",
+      achievementLifetimeBounce100Description: "Make 100 bounce baskets after the achievements update.",
+      achievementDaily7Name: "Court Regular",
+      achievementDaily7Description: "Visit the game for 7 consecutive days.",
+      achievementDaily14Name: "In Rhythm",
+      achievementDaily14Description: "Visit the game for 14 consecutive days.",
+      achievementDaily30Name: "Hoop Devotee",
+      achievementDaily30Description: "Visit the game for 30 consecutive days.",
+      achievementBall5Name: "Cool Ball",
+      achievementBall5Description: "Own at least 5 ball styles.",
+      achievementBall10Name: "Ballin’",
+      achievementBall10Description: "Own at least 10 ball styles.",
+      achievementBallAllName: "Full Rack",
+      achievementBallAllDescription: "Own every ball style in the collection.",
+      achievementDoubleBounceName: "Double Trouble",
+      achievementDoubleBounceDescription: "Make a basket after two genuine bounces in one shot.",
+      achievementThemeAllName: "Good Look",
+      achievementThemeAllDescription: "Own every theme.",
+      achievementFirstBounceName: "Bounce Start",
+      achievementFirstBounceDescription: "Score a bounce basket with the first real shot of a new run.",
       customize: "Customize Ball",
       customizeTheme: "Customize Theme",
       settings: "Settings",
@@ -1202,7 +1351,12 @@
   let language = readLanguagePreference();
   let state = "menu";
   let stats = createDefaultStats();
+  let achievementState = createDefaultAchievementState();
   let activePlaySegmentStartedAt = null;
+  let runShotCount = 0;
+  let runBounceBaskets = 0;
+  let achievementToastQueue = [];
+  let achievementToastTimer = null;
   let score = 0;
   let best = readBestScore();
   let runStartBestScore = best;
@@ -1282,6 +1436,7 @@
     held: true,
     touchedHoop: false,
     touchedWall: false,
+    wallBounceCount: 0,
     scoredHoopId: -1,
     rotation: 0,
     angularVelocity: 0,
@@ -1347,6 +1502,8 @@
     userPaused = false;
     settingsOrigin = "menu";
     score = 0;
+    runShotCount = 0;
+    runBounceBaskets = 0;
     runStartBestScore = best;
     highScoreCelebration.eligibleThisRun = runStartBestScore > 0;
     highScoreCelebration.hasCelebratedThisRun = false;
@@ -1399,6 +1556,7 @@
     setGameState(toMenu ? "menu" : "playing");
     mainMenuOverlay.classList.toggle("active", state === "menu");
     profileOverlay.classList.remove("active");
+    achievementsOverlay?.classList.remove("active");
     settingsOverlay.classList.remove("active");
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
@@ -1482,6 +1640,7 @@
     ball.held = true;
     ball.touchedHoop = false;
     ball.touchedWall = false;
+    ball.wallBounceCount = 0;
     ball.rotation = 0;
     ball.angularVelocity = 0;
     ball.settle = null;
@@ -2159,6 +2318,8 @@
       ball.held = false;
       ball.touchedHoop = false;
       ball.touchedWall = false;
+      ball.wallBounceCount = 0;
+      runShotCount = addSafeStat(runShotCount, 1);
       ball.launchHoopId = currentHoopId;
       const spinDirection = Math.sign(ball.vx) || 1;
       ball.angularVelocity = spinDirection * clamp(Math.abs(ball.vx) * 0.012, 5, 12);
@@ -2419,11 +2580,11 @@
     if (ball.x - ball.r < WALL_INSET) {
       ball.x = WALL_INSET + ball.r;
       ball.vx = Math.abs(ball.vx) * 0.66;
-      registerWallTouch();
+      registerWallTouch(true);
     } else if (ball.x + ball.r > WORLD_W - WALL_INSET) {
       ball.x = WORLD_W - WALL_INSET - ball.r;
       ball.vx = -Math.abs(ball.vx) * 0.66;
-      registerWallTouch();
+      registerWallTouch(true);
     }
 
     updateLaunchHoopSafety();
@@ -2680,7 +2841,7 @@
     ball.vx *= 0.96;
     ball.vy *= 0.96;
     if (contactType === "wall") {
-      registerWallTouch();
+      registerWallTouch(dot < 0);
     } else {
       ball.touchedHoop = true;
     }
@@ -2706,8 +2867,9 @@
     }
   }
 
-  function registerWallTouch() {
+  function registerWallTouch(countBounce) {
     if (!ball.touchedWall) playGameSound("wall");
+    if (countBounce) ball.wallBounceCount = addSafeStat(ball.wallBounceCount, 1);
     ball.touchedWall = true;
   }
 
@@ -2768,7 +2930,9 @@
     lastWasBounce = usedWall;
     score += lastScoreGain;
     recordBasketStats(wasPerfect, usedWall, lastScoreGain);
-    schedulePlatformSave();
+    const achievementUnlocked = recordAchievementBasket(wasPerfect, usedWall);
+    if (achievementUnlocked) requestSave(true);
+    else schedulePlatformSave();
     if (
       highScoreCelebration.eligibleThisRun
       && !highScoreCelebration.hasCelebratedThisRun
@@ -4102,10 +4266,155 @@
     return Math.min(Number.MAX_SAFE_INTEGER, normalizedCurrent + normalizedIncrement);
   }
 
+  function createDefaultAchievementState() {
+    return {
+      unlockedIds: [],
+      claimedIds: [],
+      perfectStreakBest: 0,
+      runBounceBest: 0,
+      lifetimeBounceBaskets: 0,
+      dailyStreak: 0,
+      lastLoginDay: ""
+    };
+  }
+
+  function normalizeAchievementIds(value, allowedIds) {
+    const requested = new Set(Array.isArray(value) ? value.filter((id) => typeof id === "string") : []);
+    return ACHIEVEMENTS
+      .map((achievement) => achievement.id)
+      .filter((id) => requested.has(id) && (!allowedIds || allowedIds.has(id)));
+  }
+
+  function normalizeLoginDay(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return "";
+    const [year, month, day] = value.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+    return value;
+  }
+
+  function normalizeAchievementState(value) {
+    const source = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+    const unlockedIds = normalizeAchievementIds(source.unlockedIds);
+    const claimedIds = normalizeAchievementIds(source.claimedIds, new Set(unlockedIds));
+    return {
+      unlockedIds,
+      claimedIds,
+      perfectStreakBest: normalizeStatValue(source.perfectStreakBest),
+      runBounceBest: normalizeStatValue(source.runBounceBest),
+      lifetimeBounceBaskets: normalizeStatValue(source.lifetimeBounceBaskets),
+      dailyStreak: normalizeStatValue(source.dailyStreak),
+      lastLoginDay: normalizeLoginDay(source.lastLoginDay)
+    };
+  }
+
+  function hasCanonicalAchievementState(value, normalized) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const keys = Object.keys(createDefaultAchievementState());
+    return Object.keys(value).length === keys.length
+      && keys.every((key) => {
+        if (Array.isArray(normalized[key])) {
+          return Array.isArray(value[key])
+            && value[key].length === normalized[key].length
+            && value[key].every((entry, index) => entry === normalized[key][index]);
+        }
+        return value[key] === normalized[key];
+      });
+  }
+
+  function getAchievementProgress(achievement) {
+    if (achievement.metric === "perfectStreak") return achievementState.perfectStreakBest;
+    if (achievement.metric === "runBounce") return achievementState.runBounceBest;
+    if (achievement.metric === "lifetimeBounce") return achievementState.lifetimeBounceBaskets;
+    if (achievement.metric === "dailyStreak") return achievementState.dailyStreak;
+    if (achievement.metric === "ballCollection") return ownedBallSkins.size;
+    if (achievement.metric === "themeCollection") return ownedThemes.size;
+    return achievementState.unlockedIds.includes(achievement.id) ? 1 : 0;
+  }
+
+  function unlockAchievement(achievementId, announce) {
+    const achievement = ACHIEVEMENT_BY_ID[achievementId];
+    if (!achievement || achievementState.unlockedIds.includes(achievementId)) return false;
+    achievementState.unlockedIds = normalizeAchievementIds([...achievementState.unlockedIds, achievementId]);
+    if (announce !== false) queueAchievementToast(achievement);
+    return true;
+  }
+
+  function evaluateAchievements(options) {
+    const config = options || {};
+    const metrics = config.metrics ? new Set(config.metrics) : null;
+    let changed = false;
+    for (const achievement of ACHIEVEMENTS) {
+      if (achievement.metric === "unlocked" || (metrics && !metrics.has(achievement.metric))) continue;
+      if (getAchievementProgress(achievement) >= achievement.target) {
+        changed = unlockAchievement(achievement.id, config.announce) || changed;
+      }
+    }
+    if (changed) {
+      syncAchievementUi();
+      if (config.persist !== false) requestSave(true);
+    }
+    return changed;
+  }
+
+  function getLocalLoginDay(date) {
+    const current = date instanceof Date ? date : new Date();
+    const year = String(current.getFullYear()).padStart(4, "0");
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = String(current.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function getLoginDayOrdinal(dayKey) {
+    const normalized = normalizeLoginDay(dayKey);
+    if (!normalized) return null;
+    const [year, month, day] = normalized.split("-").map(Number);
+    return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+  }
+
+  function recordDailyLogin(date) {
+    const today = getLocalLoginDay(date);
+    if (achievementState.lastLoginDay === today) return false;
+    const todayOrdinal = getLoginDayOrdinal(today);
+    const previousOrdinal = getLoginDayOrdinal(achievementState.lastLoginDay);
+    if (previousOrdinal !== null && todayOrdinal <= previousOrdinal) return false;
+    achievementState.dailyStreak = previousOrdinal !== null && todayOrdinal === previousOrdinal + 1
+      ? addSafeStat(achievementState.dailyStreak, 1)
+      : 1;
+    achievementState.lastLoginDay = today;
+    evaluateAchievements({ metrics: ["dailyStreak"], persist: false });
+    syncAchievementUi();
+    requestSave(true);
+    return true;
+  }
+
   function recordBasketStats(wasPerfect, usedWall, scoreGain) {
     stats.lifetimeScore = addSafeStat(stats.lifetimeScore, scoreGain);
     if (wasPerfect) stats.perfectBaskets = addSafeStat(stats.perfectBaskets, 1);
     if (usedWall) stats.bounceBaskets = addSafeStat(stats.bounceBaskets, 1);
+  }
+
+  function recordAchievementBasket(wasPerfect, usedWall) {
+    if (wasPerfect) {
+      achievementState.perfectStreakBest = Math.max(achievementState.perfectStreakBest, swishStreak);
+    }
+    if (usedWall) {
+      runBounceBaskets = addSafeStat(runBounceBaskets, 1);
+      achievementState.runBounceBest = Math.max(achievementState.runBounceBest, runBounceBaskets);
+      achievementState.lifetimeBounceBaskets = addSafeStat(achievementState.lifetimeBounceBaskets, 1);
+    }
+    let unlocked = evaluateAchievements({
+      metrics: ["perfectStreak", "runBounce", "lifetimeBounce"],
+      persist: false
+    });
+    if (usedWall && ball.wallBounceCount >= 2) {
+      unlocked = unlockAchievement("double_bounce_basket", true) || unlocked;
+    }
+    if (usedWall && runShotCount === 1) {
+      unlocked = unlockAchievement("first_shot_bounce", true) || unlocked;
+    }
+    if (unlocked) syncAchievementUi();
+    return unlocked;
   }
 
   function normalizeCoins(value) {
@@ -4139,6 +4448,9 @@
     const normalizedStats = version >= STATS_SAVE_VERSION
       ? normalizeStats(source?.stats)
       : createDefaultStats();
+    const normalizedAchievements = version >= ACHIEVEMENT_SAVE_VERSION
+      ? normalizeAchievementState(source?.achievements)
+      : createDefaultAchievementState();
     let ballSkin = normalizeBallSkinId(settings.ballSkin);
     let theme = THEMES[settings.theme] ? settings.theme : "gym";
     const balls = version >= ECONOMY_SAVE_VERSION
@@ -4163,6 +4475,7 @@
       || highScore !== source.highScore
       || normalizedCoins !== source.coins
       || !hasCanonicalStats(source.stats, normalizedStats)
+      || !hasCanonicalAchievementState(source.achievements, normalizedAchievements)
       || !hasCanonicalOwnedIds(source.ownedBallSkins, balls, BALL_SKINS)
       || !hasCanonicalOwnedIds(source.ownedThemes, themes, THEMES)
       || settings.ballSkin !== ballSkin
@@ -4175,6 +4488,7 @@
       highScore,
       coins: normalizedCoins,
       stats: normalizedStats,
+      achievements: normalizedAchievements,
       ownedBallSkins: balls,
       ownedThemes: themes,
       darkMode: typeof settings.darkMode === "boolean" ? settings.darkMode : false,
@@ -4190,6 +4504,7 @@
     best = migrated.highScore;
     coins = migrated.coins;
     stats = migrated.stats;
+    achievementState = migrated.achievements;
     ownedBallSkins = migrated.ownedBallSkins;
     ownedThemes = migrated.ownedThemes;
     darkMode = migrated.darkMode;
@@ -4302,6 +4617,7 @@
       highScore: Number.isSafeInteger(best) && best >= 0 ? best : 0,
       coins: normalizeCoins(coins),
       stats: normalizeStats(stats),
+      achievements: normalizeAchievementState(achievementState),
       ownedBallSkins: Object.keys(BALL_SKINS).filter((id) => ownedBallSkins.has(id)),
       ownedThemes: Object.keys(THEMES).filter((id) => ownedThemes.has(id)),
       settings
@@ -4436,6 +4752,202 @@
     return [hours, minutes, seconds].map((part) => String(part).padStart(2, "0")).join(":");
   }
 
+  function getAchievementTierLabel(tier) {
+    if (tier === "bronze") return t("achievementTierBronze");
+    if (tier === "silver") return t("achievementTierSilver");
+    if (tier === "gold") return t("achievementTierGold");
+    if (tier === "flame") return t("achievementTierFlame");
+    return t("achievementTierSpecial");
+  }
+
+  function getPendingAchievementIds() {
+    const claimed = new Set(achievementState.claimedIds);
+    return achievementState.unlockedIds.filter((id) => ACHIEVEMENT_BY_ID[id] && !claimed.has(id));
+  }
+
+  function getPendingAchievementReward() {
+    return getPendingAchievementIds().reduce((total, id) => total + ACHIEVEMENT_BY_ID[id].reward, 0);
+  }
+
+  function syncAchievementBadges() {
+    const pendingCount = getPendingAchievementIds().length;
+    for (const button of [profileButton, profileAchievementsButton]) {
+      if (!button) continue;
+      button.dataset.achievementCount = String(pendingCount);
+      button.classList.toggle("hasAchievementBadge", pendingCount > 0);
+    }
+    profileButton.setAttribute(
+      "aria-label",
+      pendingCount > 0 ? `${t("profile")} · ${pendingCount} ${t("achievementRewardsReady")}` : t("profile")
+    );
+    profileAchievementsButton?.setAttribute(
+      "aria-label",
+      pendingCount > 0 ? `${t("achievements")} · ${pendingCount} ${t("achievementRewardsReady")}` : t("achievements")
+    );
+  }
+
+  function createAchievementCard(achievement) {
+    const unlocked = achievementState.unlockedIds.includes(achievement.id);
+    const claimed = achievementState.claimedIds.includes(achievement.id);
+    const progress = Math.min(getAchievementProgress(achievement), achievement.target);
+    const card = document.createElement("article");
+    card.className = `achievementCard ${achievement.tier} ${unlocked ? "unlocked" : "locked"}${claimed ? " claimed" : ""}`;
+    card.setAttribute("role", "listitem");
+
+    const medal = document.createElement("span");
+    medal.className = "achievementMedal";
+    medal.textContent = achievement.tier === "flame" ? "◆" : "★";
+    medal.setAttribute("aria-label", getAchievementTierLabel(achievement.tier));
+
+    const info = document.createElement("div");
+    info.className = "achievementInfo";
+    const title = document.createElement("h3");
+    title.textContent = `${getAchievementTierLabel(achievement.tier)} · ${t(achievement.nameKey)}`;
+    const description = document.createElement("p");
+    description.textContent = t(achievement.descriptionKey);
+    const progressRow = document.createElement("div");
+    progressRow.className = "achievementProgressRow";
+    const progressTrack = document.createElement("span");
+    progressTrack.className = "achievementProgressTrack";
+    progressTrack.setAttribute("aria-hidden", "true");
+    const progressFill = document.createElement("span");
+    progressFill.className = "achievementProgressFill";
+    progressFill.style.width = `${achievement.target > 0 ? Math.round(progress / achievement.target * 100) : 0}%`;
+    progressTrack.append(progressFill);
+    const progressText = document.createElement("span");
+    progressText.className = "achievementProgressText";
+    progressText.textContent = `${progress} / ${achievement.target}`;
+    progressRow.append(progressTrack, progressText);
+    info.append(title, description, progressRow);
+
+    const reward = document.createElement("div");
+    reward.className = "achievementReward";
+    const rewardValue = document.createElement("span");
+    rewardValue.className = "achievementRewardValue";
+    const coinIcon = document.createElement("span");
+    coinIcon.className = "coinIcon";
+    coinIcon.setAttribute("aria-hidden", "true");
+    rewardValue.append(coinIcon, document.createTextNode(`+${achievement.reward}`));
+    reward.append(rewardValue);
+    if (unlocked && !claimed) {
+      const claimButton = document.createElement("button");
+      claimButton.className = "achievementClaimButton";
+      claimButton.type = "button";
+      claimButton.textContent = t("achievementClaim");
+      claimButton.addEventListener("click", () => claimAchievementReward(achievement.id));
+      reward.append(claimButton);
+    } else {
+      const status = document.createElement("span");
+      status.className = "achievementClaimed";
+      status.textContent = claimed ? `✓ ${t("achievementClaimed")}` : t("locked");
+      reward.append(status);
+    }
+
+    card.append(medal, info, reward);
+    return card;
+  }
+
+  function renderAchievements() {
+    if (!achievementList) return;
+    const fragment = document.createDocumentFragment();
+    let currentGroup = null;
+    let groupElement = null;
+    for (const achievement of ACHIEVEMENTS) {
+      if (achievement.groupKey !== currentGroup) {
+        currentGroup = achievement.groupKey;
+        groupElement = document.createElement("section");
+        groupElement.className = "achievementGroup";
+        const heading = document.createElement("h3");
+        heading.className = "achievementGroupTitle";
+        heading.textContent = t(currentGroup);
+        groupElement.append(heading);
+        fragment.append(groupElement);
+      }
+      groupElement.append(createAchievementCard(achievement));
+    }
+    achievementList.replaceChildren(fragment);
+    const completed = achievementState.unlockedIds.length;
+    achievementSummary.textContent = `${t("achievementCompleted")} ${completed} / ${ACHIEVEMENTS.length}`;
+    achievementCoinBalanceValue.textContent = String(normalizeCoins(coins));
+    const pendingReward = getPendingAchievementReward();
+    achievementClaimAllButton.disabled = pendingReward <= 0 || platformPaused;
+    achievementClaimAllButton.textContent = pendingReward > 0
+      ? `${t("claimAllAchievements")} · +${pendingReward}`
+      : t("claimAllAchievements");
+    syncAchievementBadges();
+  }
+
+  function syncAchievementUi() {
+    syncAchievementBadges();
+    if (state === "achievements" || achievementsOverlay?.classList.contains("active")) renderAchievements();
+  }
+
+  function claimAchievementReward(achievementId) {
+    const achievement = ACHIEVEMENT_BY_ID[achievementId];
+    if (
+      !achievement
+      || !platformReady
+      || platformPaused
+      || rewardedRequest
+      || !achievementState.unlockedIds.includes(achievementId)
+      || achievementState.claimedIds.includes(achievementId)
+    ) return false;
+    achievementState.claimedIds = normalizeAchievementIds(
+      [...achievementState.claimedIds, achievementId],
+      new Set(achievementState.unlockedIds)
+    );
+    coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + achievement.reward);
+    syncEconomyBalances();
+    renderAchievements();
+    requestSave(true);
+    ensureAudio();
+    playGameSound("button");
+    return true;
+  }
+
+  function claimAllAchievementRewards() {
+    if (!platformReady || platformPaused || rewardedRequest) return false;
+    const pendingIds = getPendingAchievementIds();
+    if (pendingIds.length === 0) return false;
+    const reward = pendingIds.reduce((total, id) => total + ACHIEVEMENT_BY_ID[id].reward, 0);
+    achievementState.claimedIds = normalizeAchievementIds(
+      [...achievementState.claimedIds, ...pendingIds],
+      new Set(achievementState.unlockedIds)
+    );
+    coins = Math.min(Number.MAX_SAFE_INTEGER, normalizeCoins(coins) + reward);
+    syncEconomyBalances();
+    renderAchievements();
+    requestSave(true);
+    ensureAudio();
+    playGameSound("button");
+    return true;
+  }
+
+  function queueAchievementToast(achievement) {
+    if (!achievement) return;
+    achievementToastQueue.push(achievement.id);
+    showNextAchievementToast();
+  }
+
+  function showNextAchievementToast() {
+    if (!platformReady || achievementToastTimer !== null || achievementToastQueue.length === 0) return;
+    const achievementId = achievementToastQueue.shift();
+    const achievement = ACHIEVEMENT_BY_ID[achievementId];
+    if (!achievement) {
+      showNextAchievementToast();
+      return;
+    }
+    achievementToastName.textContent = t(achievement.nameKey);
+    achievementToast.classList.add("active");
+    achievementToastTimer = window.setTimeout(() => {
+      achievementToast.classList.remove("active");
+      achievementToastTimer = window.setTimeout(() => {
+        achievementToastTimer = null;
+        showNextAchievementToast();
+      }, 220);
+    }, 2400);
+  }
+
   function renderProfile() {
     if (!activePlayTimeValue) return;
     const normalized = normalizeStats(stats);
@@ -4469,6 +4981,7 @@
     clearEconomyStatus("ball");
     clearEconomyStatus("theme");
     renderProfile();
+    renderAchievements();
     syncEconomyBalances();
     renderBallCustomizer();
     renderThemeCustomizer();
@@ -4492,6 +5005,7 @@
     if (coinHudValue) coinHudValue.textContent = value;
     if (ballCoinBalanceValue) ballCoinBalanceValue.textContent = value;
     if (themeCoinBalanceValue) themeCoinBalanceValue.textContent = value;
+    if (achievementCoinBalanceValue) achievementCoinBalanceValue.textContent = value;
     const label = t("coinBalance") + ": " + value;
     if (coinHud) coinHud.setAttribute("aria-label", label);
     if (ballCoinBalance) ballCoinBalance.setAttribute("aria-label", label);
@@ -4783,6 +5297,7 @@
     if (!BALL_SKINS[skinId] || platformPaused || rewardedRequest) return;
     const price = ECONOMY_PRICES.ball[skinId] ?? 0;
     const isOwned = ownedBallSkins.has(skinId);
+    let achievementUnlocked = false;
     if (!isOwned && coins < price) {
       showEconomyStatus("ball", t("insufficientCoins") + " · " + price + " " + t("coins"));
       ensureAudio();
@@ -4792,10 +5307,12 @@
     if (!isOwned) {
       coins -= price;
       ownedBallSkins.add(skinId);
+      achievementUnlocked = evaluateAchievements({ metrics: ["ballCollection"], persist: false });
     }
     selectedBallSkinId = skinId;
     ballEffects.selectedPreset = BALL_SKINS[skinId].effectPreset;
     writeBallSkinPreference(skinId, !isOwned);
+    if (achievementUnlocked) requestSave(true);
     syncEconomyBalances();
     renderBallCustomizer();
     if (!isOwned) showEconomyStatus("ball", t("purchased") + ": " + t(BALL_SKINS[skinId].nameKey));
@@ -4807,6 +5324,7 @@
     if (!THEMES[themeId] || platformPaused || rewardedRequest) return;
     const price = ECONOMY_PRICES.theme[themeId] ?? 0;
     const isOwned = ownedThemes.has(themeId);
+    let achievementUnlocked = false;
     if (!isOwned && coins < price) {
       showEconomyStatus("theme", t("insufficientCoins") + " · " + price + " " + t("coins"));
       ensureAudio();
@@ -4816,10 +5334,12 @@
     if (!isOwned) {
       coins -= price;
       ownedThemes.add(themeId);
+      achievementUnlocked = evaluateAchievements({ metrics: ["themeCollection"], persist: false });
     }
     selectedThemeId = themeId;
     preloadHoopSpriteSet();
     writeThemePreference(themeId, !isOwned);
+    if (achievementUnlocked) requestSave(true);
     syncEconomyBalances();
     renderThemeCustomizer();
     if (!isOwned) showEconomyStatus("theme", t("purchased") + ": " + t(THEMES[themeId].nameKey));
@@ -4869,7 +5389,7 @@
   }
 
   function syncUiState() {
-    const hideHud = state === "menu" || state === "profile" || state === "settings" || state === "customize" || state === "theme" || state === "pause-settings";
+    const hideHud = state === "menu" || state === "profile" || state === "achievements" || state === "settings" || state === "customize" || state === "theme" || state === "pause-settings";
     hud.classList.toggle("hidden", hideHud);
     hud.classList.toggle("pauseActive", state === "paused");
     syncControlLabels();
@@ -4890,9 +5410,32 @@
     }
     mainMenuOverlay.classList.remove("active");
     profileOverlay.classList.toggle("active", panelName === "profile");
+    achievementsOverlay?.classList.remove("active");
     settingsOverlay.classList.toggle("active", panelName === "settings");
     customizeOverlay.classList.toggle("active", panelName === "customize");
     themeOverlay?.classList.toggle("active", panelName === "theme");
+    syncUiState();
+  }
+
+  function openAchievements() {
+    if (!platformReady || platformPaused || state !== "profile") return;
+    ensureAudio();
+    playGameSound("button");
+    setGameState("achievements");
+    profileOverlay.classList.remove("active");
+    achievementsOverlay.classList.add("active");
+    renderAchievements();
+    syncUiState();
+  }
+
+  function closeAchievements() {
+    if (!platformReady || platformPaused || state !== "achievements") return;
+    ensureAudio();
+    playGameSound("button");
+    setGameState("profile");
+    achievementsOverlay.classList.remove("active");
+    profileOverlay.classList.add("active");
+    renderProfile();
     syncUiState();
   }
 
@@ -4902,6 +5445,7 @@
     playGameSound("button");
     setGameState("menu");
     profileOverlay.classList.remove("active");
+    achievementsOverlay?.classList.remove("active");
     settingsOverlay.classList.remove("active");
     customizeOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
@@ -4939,6 +5483,11 @@
     restartAnimationLoop();
   }
 
+  function handlePauseOverlayClick(event) {
+    if (event.target !== pauseOverlay) return;
+    resumePausedGame();
+  }
+
   function openPauseSettings() {
     if (!userPaused || state !== "paused" || platformPaused) return;
     setGameState("pause-settings");
@@ -4968,6 +5517,7 @@
     if (stopActivePlayClock()) markSaveDirty();
     userPaused = false;
     pauseOverlay.classList.remove("active");
+    achievementsOverlay?.classList.remove("active");
     settingsOverlay.classList.remove("active");
     themeOverlay?.classList.remove("active");
     resetGame(true);
@@ -5117,8 +5667,15 @@
     persistenceReady = true;
     platformReady = true;
     gameShell.inert = platformPaused;
+    const collectionAchievementsChanged = evaluateAchievements({
+      metrics: ["ballCollection", "themeCollection"],
+      announce: false,
+      persist: false
+    });
+    const dailyLoginChanged = recordDailyLogin();
+    syncAchievementUi();
     syncRewardedUi();
-    if (shouldPersistMigratedSave) requestSave(true);
+    if (shouldPersistMigratedSave || (collectionAchievementsChanged && !dailyLoginChanged)) requestSave(true);
     if (playablesBridge) playablesBridge.gameReady();
     restartAnimationLoop();
   }
@@ -5148,6 +5705,9 @@
   languageButton.addEventListener("click", toggleLanguage);
   settingsBackButton.addEventListener("click", closeSettings);
   profileBackButton.addEventListener("click", returnToMainMenu);
+  profileAchievementsButton.addEventListener("click", openAchievements);
+  achievementsBackButton.addEventListener("click", closeAchievements);
+  achievementClaimAllButton.addEventListener("click", claimAllAchievementRewards);
   customizeBackButton.addEventListener("click", returnToMainMenu);
   if (themeBackButton) themeBackButton.addEventListener("click", returnToMainMenu);
   ballRewardedCoinButton?.addEventListener("click", () => requestRewardedCoins("ball"));
@@ -5156,6 +5716,7 @@
   reviveFinishButton?.addEventListener("click", declineReviveOffer);
   menuButton.addEventListener("click", pauseGameplay);
   pauseContinueButton.addEventListener("click", resumePausedGame);
+  pauseOverlay.addEventListener("click", handlePauseOverlayClick);
   pauseMainMenuButton.addEventListener("click", exitGameplayToMainMenu);
   pauseSettingsButton.addEventListener("click", openPauseSettings);
   gameOverMenuButton.addEventListener("click", exitGameplayToMainMenu);
@@ -5174,6 +5735,34 @@
   });
   window.addEventListener("keydown", (event) => {
     if (!platformReady || platformPaused) return;
+    if (event.key === "Escape") {
+      if (event.repeat) return;
+      if (state === "playing") {
+        event.preventDefault();
+        pauseGameplay();
+        return;
+      }
+      if (state === "paused") {
+        event.preventDefault();
+        resumePausedGame();
+        return;
+      }
+      if (state === "pause-settings" || state === "settings") {
+        event.preventDefault();
+        closeSettings();
+        return;
+      }
+      if (state === "achievements") {
+        event.preventDefault();
+        closeAchievements();
+        return;
+      }
+      if (state === "profile" || state === "customize" || state === "theme") {
+        event.preventDefault();
+        returnToMainMenu();
+        return;
+      }
+    }
     if (event.key === " " && state === "menu") startGame();
     if ((event.key === "r" || event.key === "R") && state === "gameover") {
       resetGame(false);
@@ -5183,12 +5772,6 @@
       retryShot();
       playGameSound("retry");
     }
-    if (event.key === "Escape" && state === "paused") resumePausedGame();
-    if (event.key === "Escape" && state === "pause-settings") closeSettings();
-    if (event.key === "Escape" && state === "settings") closeSettings();
-    if (event.key === "Escape" && state === "profile") returnToMainMenu();
-    if (event.key === "Escape" && state === "customize") returnToMainMenu();
-    if (event.key === "Escape" && state === "theme") returnToMainMenu();
   });
 
   preloadHoopSpriteSet();
