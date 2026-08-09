@@ -83,11 +83,16 @@
     anchorX: 515,
     anchorY: 358,
     referenceWidth: 533,
-    layers: Object.freeze({
-      netBack: "assets/hoop/net-back.png",
-      rimBack: "assets/hoop/rim-back.png",
-      netFront: "assets/hoop/net-front.png",
-      rimFront: "assets/hoop/rim-front.png"
+    layerFiles: Object.freeze({
+      netBack: "net-back.png",
+      rimBack: "rim-back.png",
+      netFront: "net-front.png",
+      rimFront: "rim-front.png"
+    }),
+    layerSourceOffsets: Object.freeze({
+      "assets/hoop/minimal/dark": Object.freeze({
+        rimFront: Object.freeze({ x: 0, y: 123 })
+      })
     })
   });
   const GRAVITY = 1420;
@@ -969,6 +974,8 @@
   const ballSkinImages = Object.create(null);
   const hoopSpriteImages = Object.create(null);
   const hoopSpriteState = {
+    setId: null,
+    generation: 0,
     started: false,
     loadedCount: 0,
     ready: false,
@@ -3425,14 +3432,17 @@
     const sourceSize = HOOP_SPRITE_CONFIG.sourceSize;
     const spriteScale = hoop.w / HOOP_SPRITE_CONFIG.referenceWidth;
     const destinationSize = sourceSize * spriteScale;
+    const sourceOffset = HOOP_SPRITE_CONFIG.layerSourceOffsets[hoopSpriteState.setId]?.[layerName];
+    const offsetX = sourceOffset?.x || 0;
+    const offsetY = sourceOffset?.y || 0;
     ctx.drawImage(
       image,
       0,
       0,
       sourceSize,
       sourceSize,
-      -HOOP_SPRITE_CONFIG.anchorX * spriteScale,
-      -HOOP_SPRITE_CONFIG.anchorY * spriteScale,
+      (-HOOP_SPRITE_CONFIG.anchorX + offsetX) * spriteScale,
+      (-HOOP_SPRITE_CONFIG.anchorY + offsetY) * spriteScale,
       destinationSize,
       destinationSize
     );
@@ -3645,7 +3655,22 @@
     return ballSkinImages[skin.id];
   }
 
-  function failHoopSpriteSet(message) {
+  function getActiveHoopSpriteSet() {
+    const themeId = THEMES[selectedThemeId] ? selectedThemeId : "gym";
+    const directory = themeId === "gym"
+      ? "assets/hoop/classic"
+      : `assets/hoop/${themeId}/${darkMode ? "dark" : "light"}`;
+    const layers = Object.fromEntries(
+      Object.entries(HOOP_SPRITE_CONFIG.layerFiles).map(([layerName, fileName]) => [
+        layerName,
+        `${directory}/${fileName}`
+      ])
+    );
+    return { id: directory, layers };
+  }
+
+  function failHoopSpriteSet(message, generation = hoopSpriteState.generation) {
+    if (generation !== hoopSpriteState.generation) return;
     hoopSpriteState.failed = true;
     hoopSpriteState.ready = false;
     if (hoopSpriteState.warningSent) return;
@@ -3654,31 +3679,41 @@
   }
 
   function preloadHoopSpriteSet() {
-    if (hoopSpriteState.started) return;
+    const spriteSet = getActiveHoopSpriteSet();
+    if (hoopSpriteState.started && hoopSpriteState.setId === spriteSet.id) return;
+    hoopSpriteState.setId = spriteSet.id;
+    hoopSpriteState.generation += 1;
     hoopSpriteState.started = true;
+    hoopSpriteState.loadedCount = 0;
+    hoopSpriteState.ready = false;
+    hoopSpriteState.failed = false;
+    hoopSpriteState.warningSent = false;
+    const generation = hoopSpriteState.generation;
     if (typeof Image === "undefined") {
-      failHoopSpriteSet("Image loading is unsupported.");
+      failHoopSpriteSet("Image loading is unsupported.", generation);
       return;
     }
 
-    const layers = Object.entries(HOOP_SPRITE_CONFIG.layers);
+    const layers = Object.entries(spriteSet.layers);
     for (const [layerName, assetPath] of layers) {
       const image = new Image();
       image.decoding = "async";
       image.onload = () => {
+        if (generation !== hoopSpriteState.generation) return;
         if (
           image.naturalWidth !== HOOP_SPRITE_CONFIG.sourceSize
           || image.naturalHeight !== HOOP_SPRITE_CONFIG.sourceSize
         ) {
-          failHoopSpriteSet(layerName + " has unexpected dimensions.");
+          failHoopSpriteSet(layerName + " has unexpected dimensions.", generation);
           return;
         }
         hoopSpriteState.loadedCount += 1;
         if (!hoopSpriteState.failed && hoopSpriteState.loadedCount === layers.length) {
           hoopSpriteState.ready = true;
+          draw();
         }
       };
-      image.onerror = () => failHoopSpriteSet(layerName + " failed to load.");
+      image.onerror = () => failHoopSpriteSet(layerName + " failed to load.", generation);
       image.src = assetPath;
       hoopSpriteImages[layerName] = image;
     }
@@ -4415,6 +4450,7 @@
     document.body.classList.toggle("dark-mode", darkMode);
     themeColor.setAttribute("content", darkMode ? "#101923" : "#f7f3e8");
     writeBooleanPreference(DARK_MODE_KEY, darkMode);
+    preloadHoopSpriteSet();
     if (userPaused) draw();
     renderThemeCustomizer();
     syncControlLabels();
@@ -4782,6 +4818,7 @@
       ownedThemes.add(themeId);
     }
     selectedThemeId = themeId;
+    preloadHoopSpriteSet();
     writeThemePreference(themeId, !isOwned);
     syncEconomyBalances();
     renderThemeCustomizer();
