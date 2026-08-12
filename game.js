@@ -986,6 +986,11 @@
     Object.freeze({ id: "perfect_streak_10", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect10Name", descriptionKey: "achievementPerfect10Description", tier: "silver", metric: "perfectStreak", target: 10, reward: 30 }),
     Object.freeze({ id: "perfect_streak_20", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect20Name", descriptionKey: "achievementPerfect20Description", tier: "gold", metric: "perfectStreak", target: 20, reward: 60 }),
     Object.freeze({ id: "perfect_streak_30", groupKey: "achievementGroupPerfect", nameKey: "achievementPerfect30Name", descriptionKey: "achievementPerfect30Description", tier: "flame", metric: "perfectStreak", target: 30, reward: 100 }),
+    Object.freeze({ id: "high_score_200", groupKey: "achievementGroupScore", nameKey: "achievementScore200Name", descriptionKey: "achievementScore200Description", tier: "bronze", metric: "highScore", target: 200, reward: 25 }),
+    Object.freeze({ id: "high_score_350", groupKey: "achievementGroupScore", nameKey: "achievementScore350Name", descriptionKey: "achievementScore350Description", tier: "silver", metric: "highScore", target: 350, reward: 50 }),
+    Object.freeze({ id: "high_score_500", groupKey: "achievementGroupScore", nameKey: "achievementScore500Name", descriptionKey: "achievementScore500Description", tier: "gold", metric: "highScore", target: 500, reward: 75 }),
+    Object.freeze({ id: "high_score_700", groupKey: "achievementGroupScore", nameKey: "achievementScore700Name", descriptionKey: "achievementScore700Description", tier: "special", metric: "highScore", target: 700, reward: 125 }),
+    Object.freeze({ id: "high_score_1000", groupKey: "achievementGroupScore", nameKey: "achievementScore1000Name", descriptionKey: "achievementScore1000Description", tier: "flame", metric: "highScore", target: 1000, reward: 250 }),
     Object.freeze({ id: "run_bounce_5", groupKey: "achievementGroupRunBounce", nameKey: "achievementRunBounce5Name", descriptionKey: "achievementRunBounce5Description", tier: "bronze", metric: "runBounce", target: 5, reward: 20 }),
     Object.freeze({ id: "run_bounce_10", groupKey: "achievementGroupRunBounce", nameKey: "achievementRunBounce10Name", descriptionKey: "achievementRunBounce10Description", tier: "silver", metric: "runBounce", target: 10, reward: 50 }),
     Object.freeze({ id: "run_bounce_20", groupKey: "achievementGroupRunBounce", nameKey: "achievementRunBounce20Name", descriptionKey: "achievementRunBounce20Description", tier: "gold", metric: "runBounce", target: 20, reward: 100 }),
@@ -1000,7 +1005,8 @@
     Object.freeze({ id: "ball_collection_all", groupKey: "achievementGroupCollection", nameKey: "achievementBallAllName", descriptionKey: "achievementBallAllDescription", tier: "gold", metric: "ballCollection", target: Object.keys(BALL_SKINS).length, reward: 125 }),
     Object.freeze({ id: "double_bounce_basket", groupKey: "achievementGroupSpecial", nameKey: "achievementDoubleBounceName", descriptionKey: "achievementDoubleBounceDescription", tier: "special", metric: "unlocked", target: 1, reward: 50 }),
     Object.freeze({ id: "theme_collection_all", groupKey: "achievementGroupSpecial", nameKey: "achievementThemeAllName", descriptionKey: "achievementThemeAllDescription", tier: "special", metric: "themeCollection", target: Object.keys(THEMES).length, reward: 100 }),
-    Object.freeze({ id: "first_shot_bounce", groupKey: "achievementGroupSpecial", nameKey: "achievementFirstBounceName", descriptionKey: "achievementFirstBounceDescription", tier: "special", metric: "unlocked", target: 1, reward: 25 })
+    Object.freeze({ id: "first_shot_bounce", groupKey: "achievementGroupSpecial", nameKey: "achievementFirstBounceName", descriptionKey: "achievementFirstBounceDescription", tier: "special", metric: "unlocked", target: 1, reward: 25 }),
+    Object.freeze({ id: "last_second_timed_basket", groupKey: "achievementGroupSpecial", nameKey: "achievementLastSecondName", descriptionKey: "achievementLastSecondDescription", tier: "special", metric: "unlocked", target: 1, reward: 75 })
   ]);
   const ACHIEVEMENT_BY_ID = Object.freeze(Object.fromEntries(ACHIEVEMENTS.map((achievement) => [achievement.id, achievement])));
 
@@ -1036,6 +1042,7 @@
       achievementClaimed: "Alındı",
       achievementRewardsReady: "ödül hazır",
       achievementGroupPerfect: "Perfect Serisi",
+      achievementGroupScore: "Skor Yolculuğu",
       achievementGroupRunBounce: "Tek Oyunda Bounce",
       achievementGroupLifetimeBounce: "Toplam Bounce",
       achievementGroupDaily: "Günlük Seri",
@@ -1054,6 +1061,16 @@
       achievementPerfect20Description: "Art arda 20 perfect basket at.",
       achievementPerfect30Name: "Hall of Flame",
       achievementPerfect30Description: "Art arda 30 perfect basketle efsaneler arasına gir.",
+      achievementScore200Name: "Skor Kıvılcımı",
+      achievementScore200Description: "En az 200 skora ulaş.",
+      achievementScore350Name: "Skor Avcısı",
+      achievementScore350Description: "En az 350 skora ulaş.",
+      achievementScore500Name: "Yüksek Uçuş",
+      achievementScore500Description: "En az 500 skora ulaş.",
+      achievementScore700Name: "Pota Ustası",
+      achievementScore700Description: "En az 700 skora ulaş.",
+      achievementScore1000Name: "Hall of Flame",
+      achievementScore1000Description: "1000 skora ulaşarak alev efsaneleri arasına gir.",
       achievementRunBounce5Name: "Sek Sek",
       achievementRunBounce5Description: "Tek bir oyunda 5 bounce basket at.",
       achievementRunBounce10Name: "Duvar Dansı",
@@ -1084,6 +1101,8 @@
       achievementThemeAllDescription: "Bütün temalara sahip ol.",
       achievementFirstBounceName: "Bounce Start",
       achievementFirstBounceDescription: "Yeni oyunun ilk gerçek atışında bounce basket at.",
+      achievementLastSecondName: "Son Saniye",
+      achievementLastSecondDescription: "Süreli atışta son 1 saniye içinde fırlattığın topu basket yap.",
       customize: "Topu Özelleştir",
       customizeTheme: "Temayı Özelleştir",
       settings: "Ayarlar",
@@ -1184,6 +1203,7 @@
       achievementClaimed: "Claimed",
       achievementRewardsReady: "rewards ready",
       achievementGroupPerfect: "Perfect Streak",
+      achievementGroupScore: "Score Climb",
       achievementGroupRunBounce: "Bounce in One Run",
       achievementGroupLifetimeBounce: "Lifetime Bounce",
       achievementGroupDaily: "Daily Streak",
@@ -1202,6 +1222,16 @@
       achievementPerfect20Description: "Make 20 perfect baskets in a row.",
       achievementPerfect30Name: "Hall of Flame",
       achievementPerfect30Description: "Join the legends with 30 perfect baskets in a row.",
+      achievementScore200Name: "Score Spark",
+      achievementScore200Description: "Reach a score of at least 200.",
+      achievementScore350Name: "Score Hunter",
+      achievementScore350Description: "Reach a score of at least 350.",
+      achievementScore500Name: "High Flyer",
+      achievementScore500Description: "Reach a score of at least 500.",
+      achievementScore700Name: "Hoop Master",
+      achievementScore700Description: "Reach a score of at least 700.",
+      achievementScore1000Name: "Hall of Flame",
+      achievementScore1000Description: "Reach a score of 1000 and join the flame legends.",
       achievementRunBounce5Name: "Hopscotch",
       achievementRunBounce5Description: "Make 5 bounce baskets in one run.",
       achievementRunBounce10Name: "Wall Dance",
@@ -1232,6 +1262,8 @@
       achievementThemeAllDescription: "Own every theme.",
       achievementFirstBounceName: "Bounce Start",
       achievementFirstBounceDescription: "Score a bounce basket with the first real shot of a new run.",
+      achievementLastSecondName: "At the Buzzer",
+      achievementLastSecondDescription: "Release during the final second of a timed shot and make the basket.",
       customize: "Customize Ball",
       customizeTheme: "Customize Theme",
       settings: "Settings",
@@ -1437,6 +1469,7 @@
     touchedHoop: false,
     touchedWall: false,
     wallBounceCount: 0,
+    lastSecondTimedShot: false,
     scoredHoopId: -1,
     rotation: 0,
     angularVelocity: 0,
@@ -1641,6 +1674,7 @@
     ball.touchedHoop = false;
     ball.touchedWall = false;
     ball.wallBounceCount = 0;
+    ball.lastSecondTimedShot = false;
     ball.rotation = 0;
     ball.angularVelocity = 0;
     ball.settle = null;
@@ -2307,6 +2341,10 @@
     drag.pointerCurrentY = p.y;
   }
 
+  function isLastSecondTimedShotRelease() {
+    return timedShotActive && timedShotRemainingSeconds > 0 && timedShotRemainingSeconds <= 1;
+  }
+
   function onPointerUp(event) {
     if (event.pointerId !== activePointer) return;
     event.preventDefault();
@@ -2319,6 +2357,7 @@
       ball.touchedHoop = false;
       ball.touchedWall = false;
       ball.wallBounceCount = 0;
+      ball.lastSecondTimedShot = isLastSecondTimedShotRelease();
       runShotCount = addSafeStat(runShotCount, 1);
       ball.launchHoopId = currentHoopId;
       const spinDirection = Math.sign(ball.vx) || 1;
@@ -2917,6 +2956,7 @@
   }
 
   function scoreTargetHoop(hoop) {
+    const wasLastSecondTimedShot = ball.lastSecondTimedShot;
     consumeTimedShotChallenge();
     ball.scoredHoopId = hoop.id;
     const wasPerfect = !ball.touchedHoop;
@@ -2930,7 +2970,7 @@
     lastWasBounce = usedWall;
     score += lastScoreGain;
     recordBasketStats(wasPerfect, usedWall, lastScoreGain);
-    const achievementUnlocked = recordAchievementBasket(wasPerfect, usedWall);
+    const achievementUnlocked = recordAchievementBasket(wasPerfect, usedWall, wasLastSecondTimedShot);
     if (achievementUnlocked) requestSave(true);
     else schedulePlatformSave();
     if (
@@ -4324,6 +4364,7 @@
 
   function getAchievementProgress(achievement) {
     if (achievement.metric === "perfectStreak") return achievementState.perfectStreakBest;
+    if (achievement.metric === "highScore") return Math.max(best, score);
     if (achievement.metric === "runBounce") return achievementState.runBounceBest;
     if (achievement.metric === "lifetimeBounce") return achievementState.lifetimeBounceBaskets;
     if (achievement.metric === "dailyStreak") return achievementState.dailyStreak;
@@ -4394,7 +4435,7 @@
     if (usedWall) stats.bounceBaskets = addSafeStat(stats.bounceBaskets, 1);
   }
 
-  function recordAchievementBasket(wasPerfect, usedWall) {
+  function recordAchievementBasket(wasPerfect, usedWall, wasLastSecondTimedShot) {
     if (wasPerfect) {
       achievementState.perfectStreakBest = Math.max(achievementState.perfectStreakBest, swishStreak);
     }
@@ -4404,7 +4445,7 @@
       achievementState.lifetimeBounceBaskets = addSafeStat(achievementState.lifetimeBounceBaskets, 1);
     }
     let unlocked = evaluateAchievements({
-      metrics: ["perfectStreak", "runBounce", "lifetimeBounce"],
+      metrics: ["perfectStreak", "highScore", "runBounce", "lifetimeBounce"],
       persist: false
     });
     if (usedWall && ball.wallBounceCount >= 2) {
@@ -4412,6 +4453,9 @@
     }
     if (usedWall && runShotCount === 1) {
       unlocked = unlockAchievement("first_shot_bounce", true) || unlocked;
+    }
+    if (wasLastSecondTimedShot) {
+      unlocked = unlockAchievement("last_second_timed_basket", true) || unlocked;
     }
     if (unlocked) syncAchievementUi();
     return unlocked;
@@ -5667,15 +5711,15 @@
     persistenceReady = true;
     platformReady = true;
     gameShell.inert = platformPaused;
-    const collectionAchievementsChanged = evaluateAchievements({
-      metrics: ["ballCollection", "themeCollection"],
+    const bootstrapAchievementsChanged = evaluateAchievements({
+      metrics: ["highScore", "ballCollection", "themeCollection"],
       announce: false,
       persist: false
     });
     const dailyLoginChanged = recordDailyLogin();
     syncAchievementUi();
     syncRewardedUi();
-    if (shouldPersistMigratedSave || (collectionAchievementsChanged && !dailyLoginChanged)) requestSave(true);
+    if (shouldPersistMigratedSave || (bootstrapAchievementsChanged && !dailyLoginChanged)) requestSave(true);
     if (playablesBridge) playablesBridge.gameReady();
     restartAnimationLoop();
   }
