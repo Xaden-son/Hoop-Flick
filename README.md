@@ -74,3 +74,7 @@ Hoop-Flick/
 YouTube-specific functionality is isolated in `playablesBridge.js`. When the game runs outside YouTube Playables—such as on GitHub Pages or a local server—it falls back safely to standard browser behavior.
 
 Rewarded ads and other platform-only features are available only inside a supported YouTube Playables environment.
+
+## License
+
+All rights reserved.
